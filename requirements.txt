@@ -2,3 +2,4 @@ numpy
 open3d
 pandas
 matplotlib
+tilemapbase
