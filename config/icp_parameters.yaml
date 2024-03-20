@@ -1,0 +1,17 @@
+down_sample:
+  voxel_size: 0.03 # Number or null
+
+filter_by_distance:
+  max_distance: 35 #100
+  min_distance: 2  #0.5 para no encontrarse con el robot
+
+filter_ground_plane:
+  radius_normals: 3
+  maximum_neighbors: 300 #200
+
+normals:
+  maximum_neighbors: 300 #50
+  radius_normals: 3 #0.5
+
+icp:
+  distance_threshold: 0.2 #5

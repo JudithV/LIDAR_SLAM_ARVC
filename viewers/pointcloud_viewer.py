@@ -1,5 +1,5 @@
 """
-Visualize the point-clouds in the EUROC directory.
+Visualize the LIDAR point-clouds in the EUROC directory.
 """
 from eurocreader.eurocreader import EurocReader
 from graphslam.keyframemanager import KeyFrameManager

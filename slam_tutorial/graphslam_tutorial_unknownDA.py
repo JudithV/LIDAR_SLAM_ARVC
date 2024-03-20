@@ -26,7 +26,7 @@ The gtsam library is used in a SLAM context. When a new laser scan is received:
 import numpy as np
 from graphslam.dataassociation import DataAssociation
 from tools.euler import Euler
-from tools.homogeneousmatrix import HomogeneousMatrix
+from back_del.homogeneousmatrix import HomogeneousMatrix
 from graphslam.graphslam import GraphSLAM
 import gtsam
 from tools.conversions import mod_2pi
