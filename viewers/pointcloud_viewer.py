@@ -2,13 +2,13 @@
 Visualize the LIDAR point-clouds in the EUROC directory.
 """
 from eurocreader.eurocreader import EurocReader
-from graphslam.keyframemanager import KeyFrameManager
+from keyframemanager.keyframemanager import KeyFrameManager
 
 
 def main():
     directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/2024-03-06-17-30-39'
     euroc_read = EurocReader(directory=directory)
-    scan_times = euroc_read.read_csv(directory='/robot0/lidar/data.csv')
+    scan_times = euroc_read.read_csv(filename='/robot0/lidar/data.csv')
     scan_times = scan_times['#timestamp [ns]'].to_numpy()
     # create KeyFrameManager
     keyframe_manager = KeyFrameManager(directory=directory, scan_times=scan_times,

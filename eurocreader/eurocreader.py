@@ -40,9 +40,9 @@ class EurocReader():
     #     return df_odo
 
     def read_csv(self, filename):
-        scan_times_csv_filename = self.directory + filename
-        df_scan_times = pd.read_csv(scan_times_csv_filename)
-        return df_scan_times
+        full_filename = self.directory + filename
+        df = pd.read_csv(full_filename)
+        return df
 
     def save_csv(self, df, filename):
         df.to_csv(self.directory+filename)
@@ -83,7 +83,6 @@ class EurocReader():
                 odo_times.append(current_time)
                 odoi = odo
             odoi1 = odo
-
             dxy = np.linalg.norm(odoi1[0:2]-odoi[0:2])
             dth = np.linalg.norm(odoi1[2]-odoi[2])
             if dxy > deltaxy or dth > deltath:
@@ -91,7 +90,7 @@ class EurocReader():
                 odoi = odoi1
         return np.array(odo_times)
 
-    def get_closest_times(self, master_sensor_times, sensor_times, max_time_dif_s=0.2):
+    def get_closest_times(self, master_sensor_times, sensor_times, max_time_dif_s=0.3*1e9):
         """
         For each time in master_sensor_times, find the closest time in sensor_times
         """
@@ -100,12 +99,11 @@ class EurocReader():
         for timestamp in master_sensor_times:
             d = np.abs(sensor_times-timestamp)
             index = np.argmin(d)
-            time_diff_s = d[index]/1e9
-            if time_diff_s < max_time_dif_s:
-                output_times.append(sensor_times[index])
-            else:
-                print('Found time difference (s): ', time_diff_s)
-                print('Not associating time')
+            time_diff_s = d[index]
+            output_times.append(sensor_times[index])
+            if time_diff_s > max_time_dif_s:
+                print('CAUTION!!! Found time difference (s): ', time_diff_s/1e9)
+                print('CAUTION!!! Should we associate data??')
         return output_times
 
     # def get_closest_scan_times(self, odometry_times):

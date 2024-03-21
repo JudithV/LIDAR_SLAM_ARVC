@@ -9,7 +9,7 @@ from artelib.homogeneousmatrix import HomogeneousMatrix
 from artelib.quaternion import Quaternion
 import numpy as np
 import matplotlib.pyplot as plt
-from tools.sampling import sample_odometry
+from tools.sampling import sample_odometry, sample_times
 from config import ICP_PARAMETERS
 
 
@@ -146,22 +146,66 @@ def compute_global_transformations(transforms_relative):
         transforms_global.append(T)
     return transforms_global
 
+# def prepare_experiment_odo(directory):
+#     euroc_read = EurocReader(directory=directory)
+#     # read odometry and sample
+#     df_odo = euroc_read.read_csv(filename='/robot0/odom/data.csv')
+#     odo_times, df_odo = sample_odometry(df_odo=df_odo, deltaxy=0.3, deltath=0.05)
+#     df_lidar = euroc_read.read_csv(filename='/robot0/lidar/data.csv')
+#     scan_times = df_lidar['#timestamp [ns]'].to_numpy()
+#     # this finds the closest times to each odometry data
+#     scan_times = euroc_read.get_closest_times(odo_times, scan_times, max_time_dif_s=0.3)
+#     # plot_odometry(df_odo=df_odo)
+#     # compute homogeneous transforms from odometry
+#     transforms = compute_homogeneous_transforms(df_odo)
+#     # compute relative homogeneous transforms form global transforms
+#     transforms_rel = compute_relative_transformations(transforms=transforms)
+
+
+def plot_deltas(sensor_times, units=1e9):
+    delta_times = []
+    for i in range(len(sensor_times)-1):
+        dt = sensor_times[i+1]-sensor_times[i]
+        delta_times.append(dt/units)
+    delta_times = np.array(delta_times)
+    plt.plot(range(len(delta_times)), delta_times)
+    plt.show()
+
+
+
 
 def main():
+    """
+    Sample times from lidar, then find the corresponding data in odometry.
+    Transform odometry to relative movements
+    """
     directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/2024-03-06-17-30-39'
     euroc_read = EurocReader(directory=directory)
+    df_lidar = euroc_read.read_csv(filename='/robot0/lidar/data.csv')
+    lidar_times = df_lidar['#timestamp [ns]']
+    # plot_deltas(lidar_times)
+    scan_times = sample_times(sensor_times=lidar_times, delta_time=0.8*1e9)
+    # plot_deltas(scan_times)
+
     # read odometry and sample
     df_odo = euroc_read.read_csv(filename='/robot0/odom/data.csv')
-    odo_times, df_odo = sample_odometry(df_odo=df_odo, deltaxy=0.3, deltath=0.05)
-    df_lidar = euroc_read.read_csv(filename='/robot0/lidar/data.csv')
-    scan_times = df_lidar['#timestamp [ns]'].to_numpy()
-    # this finds the closest times to each odometry data
-    scan_times = euroc_read.get_closest_times(odo_times, scan_times, max_time_dif_s=0.3)
+    odo_times = df_odo['#timestamp [ns]']
+    # this finds the data that appear in closest times to the scans (master_sensor_times, sensor_times)
+    odo_times = euroc_read.get_closest_times(master_sensor_times=scan_times, sensor_times=odo_times,
+                                             max_time_dif_s=0.3*1e9)
+    df_odo = df_odo.loc[df_odo['#timestamp [ns]'].isin(odo_times)]
+
+    # plot_deltas(odo_times)
+
+    # now, get the odometry at those times
+
     # plot_odometry(df_odo=df_odo)
+    # plot_data --< xyz,
     # compute homogeneous transforms from odometry
     transforms = compute_homogeneous_transforms(df_odo)
     # compute relative homogeneous transforms form global transforms
     transforms_rel = compute_relative_transformations(transforms=transforms)
+
     # now run the scanmatcher routine
     keyframe_manager = KeyFrameManager(directory=directory, scan_times=scan_times, voxel_size=ICP_PARAMETERS.voxel_size)
     scanmatcher_transforms = []
