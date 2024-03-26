@@ -10,7 +10,7 @@ from artelib.homogeneousmatrix import HomogeneousMatrix
 from artelib.quaternion import Quaternion
 import numpy as np
 import matplotlib.pyplot as plt
-from tools.gpsconverions import gps2utm
+from tools.gpsconversions import gps2utm
 from tools.sampling import sample_odometry, sample_times
 from config import ICP_PARAMETERS
 from artelib.homogeneousmatrix import compute_homogeneous_transforms
@@ -144,9 +144,9 @@ def scanmatcher():
     """
     directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/2024-03-06-17-30-39'
     # caution, this is needed to remove initial LiDAR scans with no other data associated to it
-    start_index = 20
+    start_index = 15
     # sample LiDAR scans with delta_time in seconds
-    delta_time = 3
+    delta_time = 1
     # voxel size: pointclouds will be filtered with this voxel size
     voxel_size = None
     # select the simple scanmatcher (simple_scanmatcher=True) or the advanced scanmatcher (simple_scanmatcher=False)

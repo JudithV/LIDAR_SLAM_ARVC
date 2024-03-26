@@ -35,7 +35,7 @@ def visualize_map_online(global_transforms, keyframemanager, keyframe_sampling=1
         # vis.clear_geometries()
         print("Keyframe: ", i, "out of: ", len(keyframemanager.keyframes), end='\r')
         kf = keyframemanager.keyframes[i]
-        kf.filter_radius(radii=[1.0, 5.0])
+        kf.filter_radius(radii=[1.0, 35.0])
         kf.down_sample()
         Ti = sampled_transforms[i]
         # transform to global and
@@ -44,9 +44,11 @@ def visualize_map_online(global_transforms, keyframemanager, keyframe_sampling=1
         # pointcloud_global = pointcloud_global + pointcloud_temp
         # vis.add_geometry(pointcloud_global, reset_bounding_box=True)
         vis.add_geometry(pointcloud_temp, reset_bounding_box=True)
+        vis.get_render_option().point_size = 1
         # vis.update_geometry(pointcloud_global)
         vis.poll_events()
         vis.update_renderer()
+    vis.run()
     vis.destroy_window()
 
 
@@ -66,7 +68,7 @@ def build_map(global_transforms, keyframemanager, keyframe_sampling=10):
     for i in range(len(keyframemanager.keyframes)):
         print("Keyframe: ", i, "out of: ", len(keyframemanager.keyframes), end='\r')
         kf = keyframemanager.keyframes[i]
-        kf.filter_radius(radii=[1.0, 5.0])
+        kf.filter_radius(radii=[1.0, 15.0])
         kf.down_sample()
         Ti = sampled_transforms[i]
         # transform to global and
@@ -75,7 +77,6 @@ def build_map(global_transforms, keyframemanager, keyframe_sampling=10):
         pointcloud_global = pointcloud_global + pointcloud_temp
         # draw the whole map
     o3d.visualization.draw_geometries([pointcloud_global])
-
 
 
 def main():
@@ -91,44 +92,9 @@ def main():
     global_transforms = compute_homogeneous_transforms(df_data=df_map_poses)
     scan_times = df_map_poses['#timestamp [ns]'].to_numpy()
     keyframe_manager = KeyFrameManager(directory=directory, scan_times=scan_times, voxel_size=voxel_size)
-    build_map(global_transforms, keyframe_manager, keyframe_sampling=keyframe_sampling)
-    # visualize_map_online(global_transforms, keyframe_manager, keyframe_sampling=keyframe_sampling)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    # scan_times = keyframe_manager.load_pointclouds()
-    #
-    # directory_initial_gtsam = (EXP_PARAMETERS.directory + '/robot0/gtsam/initial_gtsam_matrix.csv')
-    # directory_results_gtsam = (EXP_PARAMETERS.directory + '/robot0/gtsam/results_gtsam_matrix.csv')
-    #
-    # poses_initial_gps = read_matrix_csv(directory_initial_gtsam)
-    # poses_results = read_matrix_csv(directory_results_gtsam)
-    #
-    # keyframe_manager.set_global_transforms(poses_results)
-    # keyframe_manager.view_map(pcd_directory=EXP_PARAMETERS.directory + '/robot0/gtsam/pcd_results.pcd') #, img_directory = 'Img_map_3' )
-    #
-    # # BUILD THE MAP ONLY WITH GPS
-    # # angles_gps = compute_gps_orientation(utm_pos, 0)
-    # gt_poses_gps = compute_homogeneous_transforms(utm_pos, angles_gps)
-    # keyframe_manager.set_global_transforms(gt_poses_gps)
-    # keyframe_manager.view_map(pcd_directory=EXP_PARAMETERS.directory + '/robot0/gtsam/pcd_gps.pcd')
-
-    # BUILD THE MAP ONLY WITH ODO
-    # gt_poses_odo = compute_homogeneous_transforms(odo_pos, odo_orient)
-    # keyframe_manager.set_global_transforms(gt_poses_odo)
-    # keyframe_manager.view_map(pcd_directory=EXP_PARAMETERS.directory + '/robot0/gtsam/pcd_odo.pcd')
+    # Either view the map and visualize or visualize it as it goes
+    # build_map(global_transforms, keyframe_manager, keyframe_sampling=keyframe_sampling)
+    visualize_map_online(global_transforms, keyframe_manager, keyframe_sampling=keyframe_sampling)
 
 
 if __name__ == '__main__':
