@@ -10,8 +10,8 @@ class KeyFrame():
     def __init__(self, directory, scan_time, voxel_size):
         # voxel sizes
         self.voxel_size = voxel_size
-        self.voxel_size_normals = 5*self.voxel_size
-        self.voxel_size_fpfh = 5*self.voxel_size
+        self.voxel_size_normals = 0.1
+        # self.voxel_size_fpfh = 5*self.voxel_size
         # self.icp_threshold = 5
         self.fpfh_threshold = 5
 
@@ -37,6 +37,17 @@ class KeyFrame():
         #                                                                            radius=self.voxel_size_fpfh,
         #                                                                            max_nn=100))
         # self.draw_cloud()
+
+    def filter_radius(self, radii=None):
+        if radii is None:
+            self.pointcloud_filtered = self.filter_by_radius(self.min_radius, self.max_radius)
+        else:
+            self.pointcloud_filtered = self.filter_by_radius(radii[0], radii[1])
+
+    def down_sample(self):
+        if self.voxel_size is None:
+            return
+        self.pointcloud_filtered = self.pointcloud_filtered.voxel_down_sample(voxel_size=self.voxel_size)
 
     def pre_process(self, plane_model=None, simple=False):
         if self.pre_processed:
@@ -208,8 +219,8 @@ class KeyFrame():
         index = points[:, 2] < max_height
         self.pointcloud.points = o3d.utility.Vector3dVector(points[index, :])
 
-    # def transform(self, T):
-    #     self.pointcloud.transform(T)
+    def transform(self, T):
+        return self.pointcloud_filtered.transform(T)
 
 
     # def pre_processv2(self):
@@ -227,8 +238,9 @@ class KeyFrame():
         points = np.asarray(self.pointcloud.points)
         [x, y, z] = points[:, 0], points[:, 1], points[:, 2]
         r2 = x ** 2 + y ** 2
-        idx = np.where(r2 < max_radius ** 2) and np.where(r2 > min_radius ** 2)
-        return o3d.geometry.PointCloud(o3d.utility.Vector3dVector(points[idx]))
+        # idx = np.where(r2 < max_radius ** 2) and np.where(r2 > min_radius ** 2)
+        idx2 = np.where((r2 < max_radius ** 2) & (r2 > min_radius ** 2))
+        return o3d.geometry.PointCloud(o3d.utility.Vector3dVector(points[idx2]))
 
     def calculate_plane(self, pcd=None, height=-0.5, thresholdA=0.01):
         # find a plane by removing some of the points at a given height
@@ -276,44 +288,44 @@ class KeyFrame():
         non_plane_cloud = pcd.select_by_index(inliers_final, invert=True)
         return plane_cloud, non_plane_cloud
 
-    def icp_corrected_transforms(self, keyframe_j, transformation_initial):
+    # def icp_corrected_transforms(self, keyframe_j, transformation_initial):
+    #
+    #     threshold = ICP_PARAMETERS.distance_threshold
+    #
+    #     # POINT TO PLANE ICP
+    #
+    #     reg_p2pa = (o3d.pipelines.
+    #                 registration.registration_icp(keyframe_j.pointcloud_ground_plane,
+    #                                               self.pointcloud_ground_plane, threshold, transformation_initial,
+    #                                               o3d.pipelines.registration.TransformationEstimationPointToPlane()))
+    #     reg_p2pb = (o3d.pipelines.
+    #                 registration.registration_icp(keyframe_j.pointcloud_non_ground_plane,
+    #                                               self.pointcloud_non_ground_plane, threshold, transformation_initial,
+    #                                               o3d.pipelines.registration.TransformationEstimationPointToPlane()))
+    #
+    #     t1 = HomogeneousMatrix(reg_p2pa.transformation).t2v(n=3)
+    #     t2 = HomogeneousMatrix(reg_p2pb.transformation).t2v(n=3)
+    #     # build solution using both solutions
+    #     tx = t2[0]
+    #     ty = t2[1]
+    #     tz = t1[2]
+    #     alpha = t1[3]
+    #     beta = t1[4]
+    #     gamma = t2[5]
+    #     T = HomogeneousMatrix(np.array([tx, ty, tz]), Euler([alpha, beta, gamma]))
+    #     return T
 
-        threshold = ICP_PARAMETERS.distance_threshold
-
-        # POINT TO PLANE ICP
-
-        reg_p2pa = (o3d.pipelines.
-                    registration.registration_icp(keyframe_j.pointcloud_ground_plane,
-                                                  self.pointcloud_ground_plane, threshold, transformation_initial,
-                                                  o3d.pipelines.registration.TransformationEstimationPointToPlane()))
-        reg_p2pb = (o3d.pipelines.
-                    registration.registration_icp(keyframe_j.pointcloud_non_ground_plane,
-                                                  self.pointcloud_non_ground_plane, threshold, transformation_initial,
-                                                  o3d.pipelines.registration.TransformationEstimationPointToPlane()))
-
-        t1 = HomogeneousMatrix(reg_p2pa.transformation).t2v(n=3)
-        t2 = HomogeneousMatrix(reg_p2pb.transformation).t2v(n=3)
-        # build solution using both solutions
-        tx = t2[0]
-        ty = t2[1]
-        tz = t1[2]
-        alpha = t1[3]
-        beta = t1[4]
-        gamma = t2[5]
-        T = HomogeneousMatrix(np.array([tx, ty, tz]), Euler([alpha, beta, gamma]))
-        return T
-
-    def icp_corrected_transformsv2(self, keyframe_j, transformation_initial):
-
-        threshold = ICP_PARAMETERS.distance_threshold
-
-        reg_p2pc = (o3d.pipelines.
-                    registration.registration_icp(keyframe_j.pointcloud_filtered,
-                                                  self.pointcloud_filtered, threshold, transformation_initial,
-                                                  o3d.pipelines.registration.TransformationEstimationPointToPlane()))
-
-        T = HomogeneousMatrix(reg_p2pc.transformation)
-        return T
+    # def icp_corrected_transformsv2(self, keyframe_j, transformation_initial):
+    #
+    #     threshold = ICP_PARAMETERS.distance_threshold
+    #
+    #     reg_p2pc = (o3d.pipelines.
+    #                 registration.registration_icp(keyframe_j.pointcloud_filtered,
+    #                                               self.pointcloud_filtered, threshold, transformation_initial,
+    #                                               o3d.pipelines.registration.TransformationEstimationPointToPlane()))
+    #
+    #     T = HomogeneousMatrix(reg_p2pc.transformation)
+    #     return T
 
 
 

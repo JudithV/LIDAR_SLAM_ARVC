@@ -10,6 +10,7 @@ import numpy as np
 from artelib.tools import rot2quaternion, buildT
 from artelib import quaternion, rotationmatrix, euler, vector
 import matplotlib.pyplot as plt
+# from artelib.quaternion import Quaternion
 
 
 class HomogeneousMatrix():
@@ -143,6 +144,26 @@ class HomogeneousMatrix():
         plt.show(block=block)
 
 
-
+def compute_homogeneous_transforms(df_data):
+    """
+    Compute homogeneous transforms from global panda.
+    """
+    transforms = []
+    for i in df_data.index:
+        # CAUTION: THE ORDER IN THE QUATERNION class IS [qw, qx qy qz]
+        # the order in ROS is [qx qy qz qw]
+        qw = df_data['qw'][i]
+        qx = df_data['qx'][i]
+        qy = df_data['qy'][i]
+        qz = df_data['qz'][i]
+        q = [qw, qx, qy, qz]
+        x = df_data['x'][i]
+        y = df_data['y'][i]
+        z = df_data['z'][i]
+        pos = [x, y, z]
+        Q = quaternion.Quaternion(q)
+        Ti = HomogeneousMatrix(pos, Q)
+        transforms.append(Ti)
+    return transforms
 
 
