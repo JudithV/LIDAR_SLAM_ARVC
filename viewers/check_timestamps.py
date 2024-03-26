@@ -37,10 +37,40 @@ def main():
     df_imu = euroc_read.read_csv(filename='/robot0/imu0/orientation/data.csv')
     imu_times = df_imu['#timestamp [ns]']
 
+    # PLOTTING RELATIVE DELTA TIMES
     plot_delta_times(gps_times, title='GPS delta_time (s)')
     plot_delta_times(lidar_times, title='LIDAR delta_time (s)')
     plot_delta_times(odo_times, title='ODO delta_time (s)')
     plot_delta_times(imu_times, title='IMU delta_time (orientation, s)')
+
+    odo_times = np.asarray(odo_times)
+    lidar_times = np.asarray(lidar_times)
+    imu_times = np.asarray(imu_times)
+    gps_times = np.asarray(gps_times)
+
+    print(30*'*')
+    print('TOTAL MESSAGE TIMES: ')
+    print('LiDAR: ', len(lidar_times))
+    print('Odometry: ', len(odo_times))
+    print('GPS: ', len(gps_times))
+    print('IMU: ', len(imu_times))
+    print(30*'*')
+
+    print(30 * '*')
+    print('TOTAL EPOCH TIMES: ')
+    print('LiDAR: ', lidar_times[0], lidar_times[-1])
+    print('Odometry: ', odo_times[0], odo_times[-1])
+    print('GPS: ', gps_times[0], gps_times[-1])
+    print('IMU: ', imu_times[0], imu_times[-1])
+    print(30 * '*')
+
+    print(30 * '*')
+    print('TOTAL EXPERIMENT TIMES (DURATION, seconds): ')
+    print('LiDAR: ', (lidar_times[-1]-lidar_times[0])/1e9)
+    print('Odometry: ', (odo_times[-1]-odo_times[0])/1e9)
+    print('GPS: ', (gps_times[-1]-gps_times[0])/1e9)
+    print('IMU: ', (imu_times[-1]-imu_times[0])/1e9)
+    print(30 * '*')
 
 
 if __name__ == "__main__":

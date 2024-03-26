@@ -1,5 +1,5 @@
 down_sample:
-  voxel_size: 0.03 # Number or null
+  voxel_size: 0.01 # Number or null
 
 filter_by_distance:
   max_distance: 35 #100
@@ -14,4 +14,4 @@ normals:
   radius_normals: 3 #0.5
 
 icp:
-  distance_threshold: 0.2 #5
+  distance_threshold: 1.0 #5

@@ -36,22 +36,25 @@ def sample_odometry(df_odo, deltaxy=0.5, deltath=0.2):
     return np.array(odo_times), df_sampled_odo
 
 
-def sample_times(sensor_times, delta_time=1*1e9):
+def sample_times(sensor_times, start_index=10, delta_time=1*1e9):
     """
     Get data times separated by delta_time (s)
     """
     sampled_times = []
-    current_time = sensor_times[0]
+    current_time = sensor_times[start_index]
     t = current_time
     sampled_times.append(current_time)
-    for i in range(1, len(sensor_times)):
+    for i in range(start_index, len(sensor_times)):
         current_time = sensor_times[i]
-        dt = np.abs(current_time-t)
+        dt = float(np.abs(current_time-t))
         if dt >= delta_time:
             sampled_times.append(current_time)
             t = current_time
     # add last time always
     sampled_times.append(current_time)
+    sampled_times = np.array(sampled_times)
+    # CAUTION: only unique timestamps
+    sampled_times = np.unique(sampled_times)
     return np.array(sampled_times)
 
 

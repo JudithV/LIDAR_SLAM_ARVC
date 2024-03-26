@@ -2,7 +2,7 @@
 Visualize the GPS
 """
 from eurocreader.eurocreader import EurocReader
-from tools.plotgps import plot_gps_OSM, plot_gps_points
+from tools.plottools import plot_gps_OSM, plot_gps_points
 
 
 def main():

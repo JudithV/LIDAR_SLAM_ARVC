@@ -5,183 +5,30 @@ import open3d as o3d
 import copy
 from config import ICP_PARAMETERS
 
-#
-# class KeyFrameManager():
-#     def __init__(self, directory, scan_times, voxel_size):
-#         """
-#         given a list of scan times (ROS times), each pcd is read on demand
-#         """
-#         self.directory = directory
-#         self.scan_times = scan_times
-#         self.keyframes = []
-#         self.voxel_size = voxel_size
-#
-#     def add_keyframe(self, index):
-#         kf = KeyFrame(directory=self.directory, scan_time=self.scan_times[index],
-#                       voxel_size=self.voxel_size)
-#         self.keyframes.append(kf)
-#
-#     def draw_keyframe(self, index):
-#         self.keyframes[index].draw_cloud()
-#
-#     def visualize_keyframe(self, index):
-#         self.keyframes[index].visualize_cloud()
-#
-#     def draw_all_clouds(self, sample=3, max_dist=15, max_height=1.5):
-#         vis = o3d.visualization.Visualizer()
-#         vis.create_window()
-#         for i in range(0, len(self.scan_times), sample):
-#             vis.clear_geometries()
-#             self.add_keyframe(i)
-#             self.keyframes[-1].filter_max_dist(max_dist=max_dist)
-#             self.keyframes[-1].filter_max_height(max_height=max_height)
-#             # view = vis.get_view_control()
-#             # view.set_up(np.array([1, 0, 0]))
-#             vis.add_geometry(self.keyframes[-1].pointcloud, reset_bounding_box=True)
-#             # vis.update_geometry(self.keyframes[i].pointcloud)
-#             vis.poll_events()
-#             vis.update_renderer()
-#         vis.destroy_window()
-#
-#     def save_solution(self, x):
-#         for i in range(len(x)):
-#             self.keyframes[i].x = x[i]
-#
-#     def set_relative_transforms(self, relative_transforms):
-#         """
-#         Given a set of relative transforms. Assign to each keyframe a global transform by
-#         postmultiplication.
-#         Caution, computing global transforms from relative transforms starting from T0=I
-#         """
-#         T = HomogeneousMatrix(np.eye(4))
-#         global_transforms = [T]
-#         for i in range(len(relative_transforms)):
-#             T = T*relative_transforms[i]
-#             global_transforms.append(T)
-#
-#         for i in range(len(self.keyframes)):
-#             self.keyframes[i].set_global_transform(global_transforms[i])
-#
-#     def set_global_transforms(self, global_transforms):
-#         """
-#         Assign the global transformation for each of the keyframes.
-#         """
-#         for i in range(len(self.keyframes)):
-#             self.keyframes[i].set_global_transform(global_transforms[i])
-#
-#     def compute_transformation_local(self, i, j, Tij):
-#         """
-#         Compute relative transformation using ICP from keyframe i to keyframe j when j-i = 1.
-#         An initial estimate is used to compute using icp
-#         """
-#         # TODO: Compute inintial transformation from IMU
-#         if Tij is not None:
-#             transform = self.keyframes[i].local_registration(self.keyframes[j], initial_transform=Tij.array)
-#             atb = HomogeneousMatrix(transform.transformation)
-#             return atb
-#         else:
-#             transform = self.keyframes[i].local_registration(self.keyframes[j], initial_transform=np.eye(4))
-#             atb = HomogeneousMatrix(transform.transformation)  # .t2v()
-#             return atb
-#
-#     # def compute_transformation_local(self, i, j, initial_transform=Tab, use_initial_transform=True):
-#     #     """
-#     #     Compute relative transformation using ICP from keyframe i to keyframe j when j-i = 1.
-#     #     An initial estimate is used to compute using icp
-#     #     """
-#     #     # compute initial transform from odometry
-#     #     # TODO: Compute inintial transformation from IMU
-#     #     if use_initial_transform:
-#     #         # initial estimation
-#     #         xi = self.keyframes[i].x
-#     #         xj = self.keyframes[j].x
-#     #         Ti = HomogeneousMatrix([xi[0], xi[1], 0], Euler([0, 0, xi[2]]))
-#     #         Tj = HomogeneousMatrix([xj[0], xj[1], 0], Euler([0, 0, xj[2]]))
-#     #         Tij = Ti.inv() * Tj
-#     #
-#     #         # muatb = Tij.t2v()
-#     #         transform = self.keyframes[i].local_registration(self.keyframes[j], initial_transform=Tij.array)
-#     #         atb = HomogeneousMatrix(transform.transformation) #.t2v()
-#     #         return atb
-#     #     else:
-#     #         transform = self.keyframes[i].local_registration(self.keyframes[j], initial_transform=np.eye(4))
-#     #         atb = HomogeneousMatrix(transform.transformation) #.t2v()
-#     #         return atb
-#
-#     def compute_transformation_global(self, i, j):
-#         """
-#         Compute relative transformation using ICP from keyframe i to keyframe j.
-#         An initial estimate is used.
-#         FPFh to align and refine with icp
-#         """
-#         atb = self.keyframes[i].global_registration(self.keyframes[j])
-#         atb = HomogeneousMatrix(atb).t2v()
-#         return atb
-#
-#     def view_map(self, keyframe_sampling=10, point_cloud_sampling=1000):
-#         print("COMPUTING MAP FROM KEYFRAMES")
-#         # transform all keyframes to global coordinates.
-#         pointcloud_global = o3d.geometry.PointCloud()
-#         for i in range(0, len(self.keyframes), keyframe_sampling):
-#             print("Keyframe: ", i, "out of: ", len(self.keyframes), end='\r')
-#             kf = self.keyframes[i]
-#             # transform to global and
-#             pointcloud_temp = kf.transform_to_global(point_cloud_sampling=point_cloud_sampling)
-#             # yuxtaponer los pointclouds
-#             pointcloud_global = pointcloud_global + pointcloud_temp
-#         # draw the whole map
-#         o3d.visualization.draw_geometries([pointcloud_global])
-#
-#         # # now represent ground truth and solution
-#         # x = []
-#         # for kf in self.keyframes:
-#         #     x.append(kf.x)
-#         # x = np.array(x)
-#         #
-#         # plt.figure()
-#         # # plot ground truth
-#         # if xgt is not None:
-#         #     xgt = np.array(xgt)
-#         #     plt.plot(xgt[:, 0], xgt[:, 1], color='black', linestyle='dashed', marker='+',
-#         #              markerfacecolor='black', markersize=10)
-#         # # plot solution
-#         # plt.plot(x[:, 0], x[:, 1], color='red', linestyle='dashed', marker='o', markerfacecolor='blue', markersize=10)
-#         # # plt.scatter(points_global[:, 0], points_global[:, 1], color='blue')
-#         # plt.show(block=True)
-
 
 class KeyFrame():
     def __init__(self, directory, scan_time, voxel_size):
-        self.transform = None
         # voxel sizes
         self.voxel_size = voxel_size
         self.voxel_size_normals = 5*self.voxel_size
         self.voxel_size_fpfh = 5*self.voxel_size
-        self.icp_threshold = 5
+        # self.icp_threshold = 5
         self.fpfh_threshold = 5
 
+        # read the lidar pcd
         filename = directory + '/robot0/lidar/data/' + str(scan_time) + '.pcd'
+        # the original complete pointcloud
         self.pointcloud = o3d.io.read_point_cloud(filename)
-        self.max_radius = ICP_PARAMETERS.max_distance
-        self.min_radius = ICP_PARAMETERS.min_distance
-
-
-        # downsample pointcloud and save to pointcloud in keyframe
-        # self.pointcloud = self.pointcloud.voxel_down_sample(voxel_size=self.voxel_size)
-        # calcular las normales a cada punto
-        # self.pointcloud.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(radius=self.voxel_size_normals,
-        #                                                                       max_nn=30))
-
+        # a reduced/voxelized pointcloud
         self.pointcloud_filtered = None
         self.pointcloud_ground_plane = None
         self.pointcloud_non_ground_plane = None
 
         self.voxel_size_normals_ground_plane = 0.5
         self.voxel_size_normals = 0.3
-
-        # self.compute_groundplane_once = True
+        self.max_radius = ICP_PARAMETERS.max_distance
+        self.min_radius = ICP_PARAMETERS.min_distance
         self.plane_model = None
-
         self.pre_processed = False
 
         # extraer los Fast Point Feature Histograms
@@ -191,17 +38,20 @@ class KeyFrame():
         #                                                                            max_nn=100))
         # self.draw_cloud()
 
-    def pre_process(self, plane_model=None):
+    def pre_process(self, plane_model=None, simple=False):
         if self.pre_processed:
             print('Already preprocessed, exiting')
             return
-
+        # simple processing
         self.pointcloud_filtered = self.filter_by_radius(self.min_radius, self.max_radius)
-        # self.pointcloud_filtered, ind = self.pointcloud_filtered.remove_radius_outlier(nb_points=3, radius=0.3)
-
         if self.voxel_size is not None:
             self.pointcloud_filtered = self.pointcloud_filtered.voxel_down_sample(voxel_size=self.voxel_size)
-
+        self.pointcloud_filtered.estimate_normals(
+            o3d.geometry.KDTreeSearchParamHybrid(radius=self.voxel_size_normals,
+                                                 max_nn=ICP_PARAMETERS.max_nn))
+        if simple:
+            return
+        # advanced preprocessing for the two planes scanmatcher
         if plane_model is None:
             self.plane_model = self.calculate_plane(pcd=self.pointcloud_filtered)
         else:
@@ -220,37 +70,41 @@ class KeyFrame():
         self.pointcloud_non_ground_plane.estimate_normals(
             o3d.geometry.KDTreeSearchParamHybrid(radius=self.voxel_size_normals,
                                                  max_nn=ICP_PARAMETERS.max_nn))
-        # self.pointcloud_filtered.estimate_normals(
-        #     o3d.geometry.KDTreeSearchParamHybrid(radius=self.voxel_size_normals,
-        #                                          max_nn=ICP_PARAMETERS.max_nn))
 
-    # def local_registration(self, other, initial_transform):
-    #     """
-    #     use icp to compute transformation using an initial estimate.
-    #     caution, initial_transform is a np array.
-    #     """
-    #     print("Apply point-to-plane ICP. Local registration")
-    #     # print("Using threshold: ", self.icp_threshold)
-    #     # reg_p2p = o3d.pipelines.registration.registration_icp(
-    #     #         other.pointcloud, self.pointcloud, self.icp_threshold, initial_transform,
-    #     #         o3d.pipelines.registration.TransformationEstimationPointToPoint())
-    #     reg_p2p = o3d.pipelines.registration.registration_icp(
-    #         other.pointcloud, self.pointcloud, self.icp_threshold, initial_transform,
-    #         o3d.pipelines.registration.TransformationEstimationPointToPlane())
-    #     print(reg_p2p)
-    #     # print("Transformation is:")
-    #     # print(reg_p2p.transformation)
-    #     print("")
-    #     other.draw_registration_result(self, reg_p2p.transformation)
-    #     return reg_p2p.transformation
 
-    def local_registration(self, other, initial_transform):
+    def local_registration_simple(self, other, initial_transform):
+        """
+        use icp to compute transformation using an initial estimate.
+        caution, initial_transform is a np array.
+        """
+        if initial_transform is None:
+            initial_transform = np.eye(4)
+        print("Apply point-to-plane ICP. Local registration")
+        threshold = ICP_PARAMETERS.distance_threshold
+        # reg_p2p = o3d.pipelines.registration.registration_icp(
+        #                      other.pointcloud, self.pointcloud, threshold, initial_transform,
+        #                      o3d.pipelines.registration.TransformationEstimationPointToPoint())
+        reg_p2p = o3d.pipelines.registration.registration_icp(
+                            other.pointcloud_filtered, self.pointcloud_filtered, threshold, initial_transform,
+                            o3d.pipelines.registration.TransformationEstimationPointToPlane())
+        print(reg_p2p)
+        # print("Transformation is:")
+        # print(reg_p2p.transformation)
+        # print("")
+        # other.draw_registration_result(self, reg_p2p.transformation)
+        T = HomogeneousMatrix(reg_p2p.transformation)
+        return T
+
+    def local_registration_two_planes(self, other, initial_transform):
         """
         use icp to compute transformation using an initial estimate.
         caution, initial_transform is a np array.
         """
         print("Apply point-to-plane ICP. Local registration in two phases")
         threshold = ICP_PARAMETERS.distance_threshold
+
+        if initial_transform is None:
+            initial_transform = np.eye(4)
 
         # POINT TO PLANE ICP in two phases
         reg_p2pa = (o3d.pipelines.
@@ -274,8 +128,6 @@ class KeyFrame():
         T = HomogeneousMatrix(np.array([tx, ty, tz]), Euler([alpha, beta, gamma]))
         # other.draw_registration_result(self, T.array)
         return T
-
-        # return reg_p2p.transformation
 
     def global_registration(self, other):
         """
@@ -306,6 +158,12 @@ class KeyFrame():
                                           front=[0.9288, -0.2951, -0.2242],
                                           lookat=[1.6784, 2.0612, 1.4451],
                                           up=[-0.3402, -0.9189, -0.1996])
+        # o3d.visualization.draw_geometries([source_temp, target_temp],
+        #                                   zoom=0.4459,
+        #                                   front=[0.9288, -0.2951, -0.2242],
+        #                                   lookat=[1.6784, 2.0612, 1.4451],
+        #                                   up=[0, 0, 1])
+        # o3d.visualization.draw_geometries([source_temp, target_temp])
 
     def draw_cloud(self):
         # o3d.visualization.draw_geometries([self.pointcloud],

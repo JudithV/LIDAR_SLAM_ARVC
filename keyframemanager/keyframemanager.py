@@ -20,8 +20,8 @@ class KeyFrameManager():
                       voxel_size=self.voxel_size)
         self.keyframes.append(kf)
 
-    def pre_process(self, index):
-        self.keyframes[index].pre_process()
+    def pre_process(self, index, simple):
+        self.keyframes[index].pre_process(simple=simple)
 
     def draw_keyframe(self, index):
         self.keyframes[index].draw_cloud()
@@ -71,16 +71,16 @@ class KeyFrameManager():
     #     for i in range(len(self.keyframes)):
     #         self.keyframes[i].set_global_transform(global_transforms[i])
 
-    def compute_transformation_local(self, i, j, Tij):
+    def compute_transformation_local(self, i, j, Tij, simple=False):
         """
         Compute relative transformation using ICP from keyframe i to keyframe j when j-i = 1.
         An initial estimate is used to compute using icp
         """
         # TODO: Compute inintial transformation from IMU
-        if Tij is not None:
-            transform = self.keyframes[i].local_registration(self.keyframes[j], initial_transform=Tij.array)
+        if simple:
+            transform = self.keyframes[i].local_registration_simple(self.keyframes[j], initial_transform=Tij.array)
         else:
-            transform = self.keyframes[i].local_registration(self.keyframes[j], initial_transform=np.eye(4))
+            transform = self.keyframes[i].local_registration_two_planes(self.keyframes[j], initial_transform=Tij.array)
         return transform
 
     # def compute_transformation_local(self, i, j, initial_transform=Tab, use_initial_transform=True):
