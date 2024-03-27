@@ -1,6 +1,13 @@
 """
     Build map from known/ground truth trajectory and LIDAR.
-    Author:
+
+    Author: Arturo Gil.
+    Date: 03/2024
+
+    TTD: Save map for future use in MCL localization.
+         The map can be now saved in PCL format in order to use o3D directly.
+         Also, the map can be saved in a series of pointclouds along with their positions, however path planning using,
+         for example, PRM, may not be direct
 """
 from eurocreader.eurocreader import EurocReader
 from keyframemanager.keyframemanager import KeyFrameManager
