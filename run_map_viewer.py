@@ -1,5 +1,5 @@
 """
-    Build map from known/ground truth trajectory and LIDAR.
+    Visualize map from known/ground truth trajectory and LIDAR.
 
     Author: Arturo Gil.
     Date: 03/2024
@@ -55,12 +55,16 @@ def visualize_map_online(global_transforms, keyframemanager, keyframe_sampling=1
         # vis.update_geometry(pointcloud_global)
         vis.poll_events()
         vis.update_renderer()
+    print('FINISHED! Use the window renderer to observe the map!')
     vis.run()
     vis.destroy_window()
 
 
-
 def build_map(global_transforms, keyframemanager, keyframe_sampling=10):
+    """
+    Caution: in this case, the map is built using a pointcloud and adding the points to it. This may require a great
+    amount of memmory
+    """
     print("COMPUTING MAP FROM KEYFRAMES")
     sampled_transforms = []
     # First: add all keyframes with the known sampling
@@ -82,7 +86,8 @@ def build_map(global_transforms, keyframemanager, keyframe_sampling=10):
         pointcloud_temp = kf.transform(T=Ti.array)
         # yuxtaponer los pointclouds
         pointcloud_global = pointcloud_global + pointcloud_temp
-        # draw the whole map
+    print('FINISHED! Use the renderer to view the map')
+    # draw the whole map
     o3d.visualization.draw_geometries([pointcloud_global])
 
 
@@ -94,13 +99,18 @@ def main():
     # use, for example, voxel_size=0.2. Use None to use full resolution
     voxel_size = None
     euroc_read = EurocReader(directory=directory)
+
     # test
+    # TODO: you may be using different estimations to build the map: i.e. scanmatching or the results from graphSLAM
     df_map_poses = euroc_read.read_csv(filename='/robot0/SLAM/scanmatcher_global.csv')
     global_transforms = compute_homogeneous_transforms(df_data=df_map_poses)
     scan_times = df_map_poses['#timestamp [ns]'].to_numpy()
     keyframe_manager = KeyFrameManager(directory=directory, scan_times=scan_times, voxel_size=voxel_size)
+
     # Either view the map and visualize or visualize it as it goes
+    # Option 1: build the map in a open3D cloud, then render it in a single shot
     # build_map(global_transforms, keyframe_manager, keyframe_sampling=keyframe_sampling)
+    # Option 2: use the open3D renderer to add points and view them.
     visualize_map_online(global_transforms, keyframe_manager, keyframe_sampling=keyframe_sampling)
 
 

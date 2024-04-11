@@ -6,7 +6,8 @@ A series of
 from artelib.euler import Euler
 from eurocreader.eurocreader import EurocReader
 from keyframemanager.keyframemanager import KeyFrameManager
-from artelib.homogeneousmatrix import HomogeneousMatrix
+from artelib.homogeneousmatrix import HomogeneousMatrix, compute_global_transformations, \
+    compute_relative_transformations
 from artelib.quaternion import Quaternion
 import numpy as np
 import matplotlib.pyplot as plt
@@ -43,37 +44,6 @@ def plot_transformations(transforms):
 
 
 
-
-def compute_relative_transformations(global_transforms):
-    transforms_relative = []
-    # compute relative transformations
-    for i in range(len(global_transforms) - 1):
-        Ti = global_transforms[i]
-        Tj = global_transforms[i + 1]
-        Tij = Ti.inv() * Tj
-        transforms_relative.append(Tij)
-    return transforms_relative
-
-
-def compute_global_transformations(transforms_relative, T0):
-    """
-    Compute global transformations from relative, starting at T0.
-    """
-    if T0 is None:
-        T = HomogeneousMatrix()
-    else:
-        T = T0
-    transforms_global = []
-    transforms_global.append(T)
-    # compute global transformations from relative
-    for i in range(len(transforms_relative)):
-        Tij = transforms_relative[i]
-        # Tij.print_nice()
-        T = T*Tij
-        transforms_global.append(T)
-    return transforms_global
-
-
 def view_results(relative_transforms_scanmatcher, relative_transforms_odo, df_gps):
     """
     Comparing odo, the scanmatcher result and GPS if available.
@@ -94,7 +64,6 @@ def view_results(relative_transforms_scanmatcher, relative_transforms_odo, df_gp
     plot_transformations(global_transforms_scanmatcher)
     plt.plot(utm_coords_x, utm_coords_y)
     plt.show()
-
 
 
 

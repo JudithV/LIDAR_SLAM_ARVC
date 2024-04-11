@@ -167,3 +167,34 @@ def compute_homogeneous_transforms(df_data):
     return transforms
 
 
+def compute_relative_transformations(global_transforms):
+    """
+    Given a list of global transforms, obtain n-1 relative transforms.
+    """
+    transforms_relative = []
+    # compute relative transformations
+    for i in range(len(global_transforms) - 1):
+        Ti = global_transforms[i]
+        Tj = global_transforms[i + 1]
+        Tij = Ti.inv() * Tj
+        transforms_relative.append(Tij)
+    return transforms_relative
+
+
+def compute_global_transformations(transforms_relative, T0):
+    """
+    Compute global transformations from relative transformations, starting at T0.
+    """
+    if T0 is None:
+        T = HomogeneousMatrix()
+    else:
+        T = T0
+    transforms_global = []
+    transforms_global.append(T)
+    # compute global transformations from relative
+    for i in range(len(transforms_relative)):
+        Tij = transforms_relative[i]
+        # Tij.print_nice()
+        T = T*Tij
+        transforms_global.append(T)
+    return transforms_global

@@ -8,28 +8,69 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
+# Declare the 3D translational standard deviations of the prior factor's Gaussian model, in meters.
+prior_xyz_sigma = 0.0001
+# Declare the 3D rotational standard deviations of the prior factor's Gaussian model, in degrees.
+prior_rpy_sigma = 0.0001
+# Declare the 3D translational standard deviations of the odometry factor's Gaussian model, in meters.
+odo_xyz_sigma = 0.05
+# Declare the 3D rotational standard deviations of the odometry factor's Gaussian model, in degrees.
+odo_rpy_sigma = 2
+# Declare the 3D translational standard deviations of the scanmatcher factor's Gaussian model, in meters.
+icp_xyz_sigma = 0.0000000001
+# Declare the 3D rotational standard deviations of the odometry factor's Gaussian model, in degrees.
+icp_rpy_sigma = 0.0000000001
+# GPS noise: in UTM, x, y, height
+gps_xyh_sigma = 0.1
+
+PRIOR_NOISE = gtsam.noiseModel.Diagonal.Sigmas(np.array([prior_rpy_sigma*np.pi/180,
+                                                         prior_rpy_sigma*np.pi/180,
+                                                         prior_rpy_sigma*np.pi/180,
+                                                         prior_xyz_sigma,
+                                                         prior_xyz_sigma,
+                                                         prior_xyz_sigma]))
+# noise from the scanmatcher
+SM_NOISE = gtsam.noiseModel.Diagonal.Sigmas(np.array([icp_rpy_sigma*np.pi/180,
+                                                            icp_rpy_sigma*np.pi/180,
+                                                            icp_rpy_sigma*np.pi/180,
+                                                            icp_xyz_sigma,
+                                                            icp_xyz_sigma,
+                                                            icp_xyz_sigma]))
+
+ODO_NOISE = gtsam.noiseModel.Diagonal.Sigmas(np.array([odo_rpy_sigma*np.pi/180,
+                                                            odo_rpy_sigma*np.pi/180,
+                                                            odo_rpy_sigma*np.pi/180,
+                                                            odo_xyz_sigma,
+                                                            odo_xyz_sigma,
+                                                            odo_xyz_sigma]))
+
+GPS_NOISE = gtsam.Point3(gps_xyh_sigma, gps_xyh_sigma, gps_xyh_sigma)
+
+
 class GraphSLAM():
-    def __init__(self, prior_noise, icp_noise):
+    def __init__(self):
         self.current_index = 0
         self.graph = gtsam.NonlinearFactorGraph()
-        # self.graph = gtsam.GaussianFactorGraph()
-        # self.current_solution = np.array([odom0])
-        # first pose, add now
-        # self.graph.add(gtsam.PriorFactorPose2(self.current_index, gtsam.Pose2(odom0[0], odom0[1], odom0[2]), prior_noise))
-        # Add a prior on pose x0, with 0.3 rad std on roll,pitch,yaw and 0.1m x,y,z
-        prior_noise = gtsam.noiseModel.Diagonal.Sigmas(np.array([0.3, 0.3, 0.3, 0.1, 0.1, 0.1]))
-        self.graph.add(gtsam.PriorFactorPose3(self.current_index, gtsam.Pose3(), prior_noise))
         self.initial_estimate = gtsam.Values()
-        self.initial_estimate.insert(self.current_index, gtsam.Pose3())
         self.current_estimate = self.initial_estimate
         self.n_vertices = 1 # the prior above is an edge
         self.n_edges = 0
-        self.ICP_NOISE = icp_noise
+        # noises
+        self.PRIOR_NOISE = PRIOR_NOISE
+        self.SM_NOISE = SM_NOISE
+        self.ODO_NOISE = ODO_NOISE
+        self.GPS_NOISE = gtsam.noiseModel.Diagonal.Sigmas(GPS_NOISE)
 
         parameters = gtsam.ISAM2Params()
         parameters.setRelinearizeThreshold(0.1)
         parameters.relinearizeSkip = 1
         self.isam = gtsam.ISAM2(parameters)
+
+    def init_graph(self):
+        self.graph.add(gtsam.PriorFactorPose3(self.current_index, gtsam.Pose3(), self.PRIOR_NOISE))
+        # CAUTION: the initial T0 transform is the identity.
+        self.initial_estimate.insert(self.current_index, gtsam.Pose3())
+        self.current_estimate = self.initial_estimate
 
     def add_consecutive_observation(self, atb):
         """
@@ -40,20 +81,15 @@ class GraphSLAM():
         self.n_edges = self.n_edges + 1
         k = self.current_index
         # add consecutive observation
-        # self.graph.add(gtsam.BetweenFactorPose2(k, k+1, gtsam.Pose2(atb[0], atb[1], atb[2]), self.ICP_NOISE))
-        self.graph.add(gtsam.BetweenFactorPose3(k, k + 1, gtsam.Pose3(atb.array), self.ICP_NOISE))
+        self.graph.add(gtsam.BetweenFactorPose3(k, k + 1, gtsam.Pose3(atb.array), self.SM_NOISE))
 
         # compute next estimation
         next_estimate = self.current_estimate.atPose3(k).compose(gtsam.Pose3(atb.array))
         self.initial_estimate.insert(k + 1, next_estimate)
         self.current_index = k + 1
-        # compound relative transformation to the last pose
-        # cs = self.current_solution[-1]
-        # T = HomogeneousMatrix([cs[0], cs[1], 0], Euler([0, 0, cs[2]]))
-        # Trel = HomogeneousMatrix([atb[0], atb[1], 0], Euler([0, 0, atb[2]]))
-        # T = T*Trel
-        # concatenate prior solution
-        # self.current_solution = np.vstack((self.current_solution, T.t2v()))
+        # self.isam.update(self.graph, self.initial_estimate)
+        # self.current_estimate = self.isam.calculateEstimate()
+
 
     def add_non_consecutive_observation(self, i, j, aTb):
         """
@@ -64,12 +100,14 @@ class GraphSLAM():
         # add non consecutive observation
         self.graph.add(gtsam.BetweenFactorPose2(int(i), int(j), gtsam.Pose2(aTb[0], aTb[1], aTb[2]), self.ICP_NOISE))
 
+
     def optimize(self):
         self.isam.update(self.graph, self.initial_estimate)
         self.current_estimate = self.isam.calculateEstimate()
         self.initial_estimate.clear()
+        # if report_on_progress:
+        #     self.report_on_progress()
 
-        self.report_on_progress()
         # # init initial estimate, read from self.current_solution
         # initial_estimate = gtsam.Values()
         # k = 0
@@ -89,8 +127,8 @@ class GraphSLAM():
         # result = optimizer.optimize()
         # print("Final Result:\n{}".format(result))
 
-        print("GRAPH")
-        print(self.graph)
+        # print("GRAPH")
+        # print(self.graph)
 
         # 5. Calculate and print marginal covariances for all variables
         # marginals = gtsam.Marginals(self.graph, result)
@@ -131,14 +169,14 @@ class GraphSLAM():
 
         i = 1
         while self.current_estimate.exists(i):
-            gtsam_plot.plot_pose3(0, self.current_estimate.atPose3(i), 10,
+            gtsam_plot.plot_pose3(0, self.current_estimate.atPose3(i), 0.5,
                                   marginals.marginalCovariance(i))
             i += 1
 
         axes.set_xlim3d(-30, 45)
         axes.set_ylim3d(-30, 45)
         axes.set_zlim3d(-30, 45)
-        plt.pause(1)
+        plt.pause(.01)
 
 
     def view_solution(self):

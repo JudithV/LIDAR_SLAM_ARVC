@@ -105,16 +105,16 @@ def Pose3_ISAM2_example():
     plt.ion()
 
     # Declare the 3D translational standard deviations of the prior factor's Gaussian model, in meters.
-    prior_xyz_sigma = 0.3
+    prior_xyz_sigma = 0.03
 
     # Declare the 3D rotational standard deviations of the prior factor's Gaussian model, in degrees.
-    prior_rpy_sigma = 5
+    prior_rpy_sigma = 0.05
 
     # Declare the 3D translational standard deviations of the odometry factor's Gaussian model, in meters.
-    odometry_xyz_sigma = 0.2
+    odometry_xyz_sigma = 0.002
 
     # Declare the 3D rotational standard deviations of the odometry factor's Gaussian model, in degrees.
-    odometry_rpy_sigma = 5
+    odometry_rpy_sigma = 0.005
 
     # Although this example only uses linear measurements and Gaussian noise models, it is important
     # to note that iSAM2 can be utilized to its full potential during nonlinear optimization. This example

@@ -11,7 +11,7 @@ from tools.rotationmatrix import RotationMatrix
 from pyproj import Proj
 
 
-class GraphGTSAM3D():
+class GraphGTSAM3DMIRIAM():
     def __init__(self, scan_times, lat_lon, utm_pos, relative_poses_gps, relative_poses_odo=None,
                  relative_poses_icp=None, relative_poses_imu=None):
         self.scan_times = scan_times
