@@ -15,6 +15,13 @@ class KeyFrameManager():
         self.keyframes = []
         self.voxel_size = voxel_size
 
+    def add_keyframes(self, keyframe_sampling):
+        # First: add all keyframes with the known sampling
+        for i in range(0, len(self.scan_times), keyframe_sampling):
+            print("Keyframemanager: Adding Keyframe: ", i, "out of: ", len(self.keyframes), end='\r')
+            self.add_keyframe(i)
+            # sampled_transforms.append(global_transforms[i])
+
     def add_keyframe(self, index):
         kf = KeyFrame(directory=self.directory, scan_time=self.scan_times[index],
                       voxel_size=self.voxel_size)
@@ -22,6 +29,28 @@ class KeyFrameManager():
 
     def pre_process(self, index, simple):
         self.keyframes[index].pre_process(simple=simple)
+
+    def compute_transformation_local(self, i, j, Tij, simple=False):
+        """
+        Compute relative transformation using ICP from keyframe i to keyframe j when j-i = 1.
+        An initial estimate is used to compute using icp
+        """
+        # TODO: Compute inintial transformation from IMU
+        if simple:
+            transform = self.keyframes[i].local_registration_simple(self.keyframes[j], initial_transform=Tij.array)
+        else:
+            transform = self.keyframes[i].local_registration_two_planes(self.keyframes[j], initial_transform=Tij.array)
+        return transform
+
+    def compute_transformation_global(self, i, j):
+        """
+        Compute relative transformation using ICP from keyframe i to keyframe j.
+        An initial estimate is used.
+        FPFh to align and refine with icp
+        """
+        atb = self.keyframes[i].global_registration(self.keyframes[j])
+        atb = HomogeneousMatrix(atb).t2v()
+        return atb
 
     def draw_keyframe(self, index):
         self.keyframes[index].draw_cloud()
@@ -44,6 +73,74 @@ class KeyFrameManager():
             vis.poll_events()
             vis.update_renderer()
         vis.destroy_window()
+
+    def visualize_map_online(self, global_transforms, keyframe_sampling=10):
+        """
+        Builds map rendering updates at each frame.
+
+        Caution: the map is not built, but the o3d window is in charge of storing the points
+        and viewing them.
+        """
+        print("COMPUTING MAP FROM KEYFRAMES")
+        sampled_transforms = []
+        for i in range(0, len(global_transforms), keyframe_sampling):
+            sampled_transforms.append(global_transforms[i])
+
+        print('NOW, BUILD THE MAP')
+        vis = o3d.visualization.Visualizer()
+        vis.create_window()
+        # transform all keyframes to global coordinates.
+        # pointcloud_global = o3d.geometry.PointCloud()
+        # caution, the visualizer only adds the transformed pointcloud to
+        # the window, without removing the other geometries
+        # the global map (pointcloud_global) is not built.
+        for i in range(len(self.keyframes)):
+            # vis.clear_geometries()
+            print("Keyframe: ", i, "out of: ", len(self.keyframes), end='\r')
+            kf = self.keyframes[i]
+            kf.filter_radius(radii=[1.0, 35.0])
+            kf.down_sample()
+            Ti = sampled_transforms[i]
+            # transform to global and
+            pointcloud_temp = kf.transform(T=Ti.array)
+            # yuxtaponer los pointclouds
+            # pointcloud_global = pointcloud_global + pointcloud_temp
+            # vis.add_geometry(pointcloud_global, reset_bounding_box=True)
+            vis.add_geometry(pointcloud_temp, reset_bounding_box=True)
+            vis.get_render_option().point_size = 1
+            # vis.update_geometry(pointcloud_global)
+            vis.poll_events()
+            vis.update_renderer()
+        print('FINISHED! Use the window renderer to observe the map!')
+        vis.run()
+        vis.destroy_window()
+
+    def build_map(self, global_transforms, keyframe_sampling=10):
+        """
+        Caution: in this case, the map is built using a pointcloud and adding the points to it. This may require a great
+        amount of memory, however the result may be saved easily
+        """
+        print("COMPUTING MAP FROM KEYFRAMES")
+        sampled_transforms = []
+        for i in range(0, len(global_transforms), keyframe_sampling):
+            sampled_transforms.append(global_transforms[i])
+
+        print('NOW, BUILD THE MAP')
+        # transform all keyframes to global coordinates.
+        pointcloud_global = o3d.geometry.PointCloud()
+        for i in range(len(self.keyframes)):
+            print("Keyframe: ", i, "out of: ", len(self.keyframes), end='\r')
+            kf = self.keyframes[i]
+            kf.filter_radius(radii=[1.0, 15.0])
+            kf.down_sample()
+            Ti = sampled_transforms[i]
+            # transform to global and
+            pointcloud_temp = kf.transform(T=Ti.array)
+            # yuxtaponer los pointclouds
+            pointcloud_global = pointcloud_global + pointcloud_temp
+        print('FINISHED! Use the renderer to view the map')
+        # draw the whole map
+        o3d.visualization.draw_geometries([pointcloud_global])
 
     # def save_solution(self, x):
     #     for i in range(len(x)):
@@ -71,18 +168,6 @@ class KeyFrameManager():
     #     for i in range(len(self.keyframes)):
     #         self.keyframes[i].set_global_transform(global_transforms[i])
 
-    def compute_transformation_local(self, i, j, Tij, simple=False):
-        """
-        Compute relative transformation using ICP from keyframe i to keyframe j when j-i = 1.
-        An initial estimate is used to compute using icp
-        """
-        # TODO: Compute inintial transformation from IMU
-        if simple:
-            transform = self.keyframes[i].local_registration_simple(self.keyframes[j], initial_transform=Tij.array)
-        else:
-            transform = self.keyframes[i].local_registration_two_planes(self.keyframes[j], initial_transform=Tij.array)
-        return transform
-
     # def compute_transformation_local(self, i, j, initial_transform=Tab, use_initial_transform=True):
     #     """
     #     Compute relative transformation using ICP from keyframe i to keyframe j when j-i = 1.
@@ -106,16 +191,6 @@ class KeyFrameManager():
     #         transform = self.keyframes[i].local_registration(self.keyframes[j], initial_transform=np.eye(4))
     #         atb = HomogeneousMatrix(transform.transformation) #.t2v()
     #         return atb
-
-    def compute_transformation_global(self, i, j):
-        """
-        Compute relative transformation using ICP from keyframe i to keyframe j.
-        An initial estimate is used.
-        FPFh to align and refine with icp
-        """
-        atb = self.keyframes[i].global_registration(self.keyframes[j])
-        atb = HomogeneousMatrix(atb).t2v()
-        return atb
 
     # def build_map(self, keyframe_sampling=10, point_cloud_sampling=1000):
     #     print("COMPUTING MAP FROM KEYFRAMES")

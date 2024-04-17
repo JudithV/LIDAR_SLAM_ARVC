@@ -115,7 +115,7 @@ def scanmatcher():
     # caution, this is needed to remove initial LiDAR scans with no other data associated to it
     start_index = 15
     # sample LiDAR scans with delta_time in seconds
-    delta_time = 1
+    delta_time = 0.5
     # voxel size: pointclouds will be filtered with this voxel size
     voxel_size = None
     # select the simple scanmatcher (simple_scanmatcher=True) or the advanced scanmatcher (simple_scanmatcher=False)
@@ -153,11 +153,15 @@ def scanmatcher():
     # compute the global transformations using scanmatching
     global_transforms_scanmatcher = compute_global_transformations(relative_transforms_scanmatcher, T0=None)
 
-    # save scanmatcher transforms
-    euroc_read.save_transforms_as_csv(scan_times, relative_transforms_scanmatcher, directory='/robot0/SLAM',
-                                      filename='/robot0/SLAM/scanmatcher_relative.csv')
-    euroc_read.save_transforms_as_csv(scan_times, global_transforms_scanmatcher, directory='/robot0/SLAM',
-                                      filename='/robot0/SLAM/scanmatcher_global.csv')
+    # save to a directory so that maps can be later built
+    # save times for the sensor. Please, beware that, in this sense, there are n-1 times in the relative transformations
+    euroc_read.save_sensor_times_as_csv(scan_times, filename='/robot0/scanmatcher/lidar_times.csv')
+    # save scanmatcher transforms. Relative
+    euroc_read.save_transforms_as_csv(scan_times, relative_transforms_scanmatcher,
+                                      filename='/robot0/scanmatcher/scanmatcher_relative.csv')
+    # save global transforms
+    euroc_read.save_transforms_as_csv(scan_times, global_transforms_scanmatcher,
+                                      filename='/robot0/scanmatcher/scanmatcher_global.csv')
 
 
 

@@ -48,11 +48,14 @@ class EurocReader():
     def save_csv(self, df, filename):
         df.to_csv(self.directory+filename)
 
-    def save_transforms_as_csv(self, sensor_times, transforms, directory, filename):
+    def save_transforms_as_csv(self, sensor_times, transforms, filename):
+        global_filename = self.directory+filename
+        import os
+        global_directory = os.path.dirname(os.path.abspath(global_filename))
         try:
-            os.makedirs(self.directory+directory)
+            os.makedirs(global_directory)
         except OSError:
-            print("Directory exists or creation failed", self.directory+directory)
+            print("Directory exists or creation failed", global_directory)
         data_list = []
         for i in range(len(transforms)):
             Ti = transforms[i]
@@ -61,6 +64,21 @@ class EurocReader():
             data_list.append({'#timestamp [ns]': sensor_times[i],
                          'x': t[0], 'y': t[1], 'z': t[2],
                          'qx': q[1], 'qy': q[2], 'qz': q[3], 'qw': q[0]})
+        df = pd.DataFrame(data_list)
+        df.to_csv(self.directory+filename)
+        return df
+
+    def save_sensor_times_as_csv(self, sensor_times, filename):
+        global_filename = self.directory+filename
+        import os
+        global_directory = os.path.dirname(os.path.abspath(global_filename))
+        try:
+            os.makedirs(global_directory)
+        except OSError:
+            print("Directory exists or creation failed", global_directory)
+        data_list = []
+        for i in range(len(sensor_times)):
+            data_list.append({'#timestamp [ns]': sensor_times[i]})
         df = pd.DataFrame(data_list)
         df.to_csv(self.directory+filename)
         return df

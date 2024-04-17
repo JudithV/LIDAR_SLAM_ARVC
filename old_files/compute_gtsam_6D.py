@@ -1,3 +1,7 @@
+"""
+Author: Miriam Máximo
+Date: 11/2023
+"""
 import numpy as np
 import pandas as pd
 from config import EXP_PARAMETERS
@@ -5,7 +9,7 @@ from eurocreader.eurocreader import EurocReader
 from tools.homogeneous_matrix import HomogeneousMatrix
 from tools.quaternion import Quaternion
 from tools.euler import Euler
-from gtsamgraph.gtsamgraph import GraphGTSAM3D
+from gtsamgraph_old.gtsamgraph import GraphGTSAM3D
 from tools.matrix_csv import read_matrix_csv, write_matrix_csv
 from pyproj import Proj
 
