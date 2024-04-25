@@ -11,9 +11,9 @@ import numpy as np
 # Declare the 3D translational standard deviations of the prior factor's Gaussian model, in meters.
 from artelib.homogeneousmatrix import HomogeneousMatrix
 
-prior_xyz_sigma = 0.0000001
+prior_xyz_sigma = 10.0000000
 # Declare the 3D rotational standard deviations of the prior factor's Gaussian model, in degrees.
-prior_rpy_sigma = 0.0000001
+prior_rpy_sigma = 10.0000000
 # Declare the 3D translational standard deviations of the odometry factor's Gaussian model, in meters.
 odo_xyz_sigma = 0.01
 # Declare the 3D rotational standard deviations of the odometry factor's Gaussian model, in degrees.
@@ -23,7 +23,8 @@ icp_xyz_sigma = 0.01
 # Declare the 3D rotational standard deviations of the odometry factor's Gaussian model, in degrees.
 icp_rpy_sigma = 0.01
 # GPS noise: in UTM, x, y, height
-gps_xyh_sigma = 0.1
+gps_xy_sigma = 0.5
+gps_altitude_sigma = 1.0
 
 PRIOR_NOISE = gtsam.noiseModel.Diagonal.Sigmas(np.array([prior_rpy_sigma*np.pi/180,
                                                          prior_rpy_sigma*np.pi/180,
@@ -46,7 +47,7 @@ ODO_NOISE = gtsam.noiseModel.Diagonal.Sigmas(np.array([odo_rpy_sigma*np.pi/180,
                                                             odo_xyz_sigma,
                                                             odo_xyz_sigma]))
 
-GPS_NOISE = gtsam.Point3(gps_xyh_sigma, gps_xyh_sigma, gps_xyh_sigma)
+GPS_NOISE = gtsam.Point3(gps_xy_sigma, gps_xy_sigma, gps_altitude_sigma)
 
 
 class GraphSLAMSO3():
@@ -81,6 +82,10 @@ class GraphSLAMSO3():
         # add consecutive observation
         self.graph.push_back(gtsam.BetweenFactorPose3(i, j, gtsam.Pose3(atb.array), noise))
 
+    def add_GPSfactor(self, utmx, utmy, utmaltitude, i):
+        utm = gtsam.Point3(utmx, utmy, utmaltitude)
+        self.graph.add(gtsam.GPSFactor(i, utm, self.GPS_NOISE))
+
     def add_initial_estimate(self, atb, k):
         next_estimate = self.current_estimate.atPose3(k).compose(gtsam.Pose3(atb.array))
         self.initial_estimate.insert(k + 1, next_estimate)
@@ -98,13 +103,6 @@ class GraphSLAMSO3():
             return self.SM_NOISE
         elif noise_type == 'GPS':
             return self.GPS_NOISE
-
-    # def report_on_progress(self, plot_uncertainty_ellip skip=1):
-    # def plot(self, plot3D=True, plot_uncertainty_ellipse=True, skip=1):
-    #     if plot3D:
-    #         self.plot3D(plot_uncertainty_ellipse=plot_uncertainty_ellipse, skip=skip)
-    #     else:
-    #         self.plot2D(plot_uncertainty_ellipse=plot_uncertainty_ellipse, skip=skip)
 
     def plot(self, plot3D=True, plot_uncertainty_ellipse=True, skip=1):
         """Print and plot incremental progress of the robot for 3D Pose SLAM using iSAM2."""
@@ -132,27 +130,52 @@ class GraphSLAMSO3():
                 else:
                     gtsam_plot.plot_pose2(0, self.current_estimate.atPose2(i), 0.5, None)
 
-            i += skip
+            i += np.max([skip, 1])
 
-        axes.set_xlim3d(-30, 45)
-        axes.set_ylim3d(-30, 45)
-        axes.set_zlim3d(-30, 45)
+        # axes.set_xlim3d(-30, 45)
+        # axes.set_ylim3d(-30, 45)
+        # axes.set_zlim3d(-30, 45)
         plt.pause(.01)
 
+    def plot_simple(self, skip=1):
+        """
+        Print and plot the result simply.
+        """
+        # Plot the newly updated iSAM2 inference.
+        fig = plt.figure(0)
+        axes = fig.gca(projection='3d')
+        plt.cla()
 
-    def plot2D(self, plot_uncertainty_ellipse, skip):
-        # init initial estimate, read from self.current_solution
-        initial_estimate = gtsam.Values()
-        k = 0
-        for pose2 in self.current_solution:
-            initial_estimate.insert(k, gtsam.Pose2(pose2[0], pose2[1], pose2[2]))
-            k = k+1
-        marginals = gtsam.Marginals(self.graph, initial_estimate)
-        for i in range(self.n_vertices):
-            gtsam_plot.plot_pose2(0, initial_estimate.atPose2(i), 0.5,
-                                  marginals.marginalCovariance(i))
-        plt.axis('equal')
-        plt.show()
+        i = 0
+        data = []
+        while self.current_estimate.exists(i):
+            ce = self.current_estimate.atPose3(i)
+            T = HomogeneousMatrix(ce.matrix())
+            data.append(T.pos())
+            i += np.max([skip, 1])
+        data = np.array(data)
+        axes.scatter(data[:, 0], data[:, 1], data[:, 2])
+
+
+
+        # axes.set_xlim3d(-30, 45)
+        # axes.set_ylim3d(-30, 45)
+        # axes.set_zlim3d(-30, 45)
+        plt.pause(.01)
+
+    # def plot2D(self, plot_uncertainty_ellipse, skip):
+    #     # init initial estimate, read from self.current_solution
+    #     initial_estimate = gtsam.Values()
+    #     k = 0
+    #     for pose2 in self.current_solution:
+    #         initial_estimate.insert(k, gtsam.Pose2(pose2[0], pose2[1], pose2[2]))
+    #         k = k+1
+    #     marginals = gtsam.Marginals(self.graph, initial_estimate)
+    #     for i in range(self.n_vertices):
+    #         gtsam_plot.plot_pose2(0, initial_estimate.atPose2(i), 0.5,
+    #                               marginals.marginalCovariance(i))
+    #     plt.axis('equal')
+    #     plt.show()
 
     def get_solution(self):
         return self.current_estimate

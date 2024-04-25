@@ -8,6 +8,9 @@ from config import ICP_PARAMETERS
 
 class KeyFrame():
     def __init__(self, directory, scan_time, voxel_size):
+        # directory
+        self.directory = directory
+        self.scan_time = scan_time
         # voxel sizes
         self.voxel_size = voxel_size
         self.voxel_size_normals = 0.1
@@ -16,9 +19,9 @@ class KeyFrame():
         self.fpfh_threshold = 5
 
         # read the lidar pcd
-        filename = directory + '/robot0/lidar/data/' + str(scan_time) + '.pcd'
+        # filename = directory + '/robot0/lidar/data/' + str(scan_time) + '.pcd'
         # the original complete pointcloud
-        self.pointcloud = o3d.io.read_point_cloud(filename)
+        self.pointcloud = None #o3d.io.read_point_cloud(filename)
         # a reduced/voxelized pointcloud
         self.pointcloud_filtered = None
         self.pointcloud_ground_plane = None
@@ -26,8 +29,10 @@ class KeyFrame():
 
         self.voxel_size_normals_ground_plane = 0.5
         self.voxel_size_normals = 0.3
-        self.max_radius = ICP_PARAMETERS.max_distance
-        self.min_radius = ICP_PARAMETERS.min_distance
+        self.max_radius = ICP_PARAMETERS.max_radius
+        self.min_radius = ICP_PARAMETERS.min_radius
+        self.max_height = ICP_PARAMETERS.max_height
+        self.min_height = ICP_PARAMETERS.min_height
         self.plane_model = None
         self.pre_processed = False
 
@@ -38,35 +43,113 @@ class KeyFrame():
         #                                                                            max_nn=100))
         # self.draw_cloud()
 
-    def filter_radius(self, radii=None):
+    def load_pointcloud(self):
+        filename = self.directory + '/robot0/lidar/data/' + str(self.scan_time) + '.pcd'
+        # Load the original complete pointcloud
+        self.pointcloud = o3d.io.read_point_cloud(filename)
+
+    def filter_radius_height(self, radii=None, heights=None):
         if radii is None:
-            self.pointcloud_filtered = self.filter_by_radius(self.min_radius, self.max_radius)
+            min_radius = self.min_radius
+            max_radius = self.max_radius
         else:
-            self.pointcloud_filtered = self.filter_by_radius(radii[0], radii[1])
+            min_radius = radii[0]
+            max_radius = radii[1]
+        if heights is None:
+            min_height = self.min_height
+            max_height = self.max_height
+        else:
+            min_height = heights[0]
+            max_height = heights[1]
+
+        points = np.asarray(self.pointcloud.points)
+        [x, y, z] = points[:, 0], points[:, 1], points[:, 2]
+        r2 = x ** 2 + y ** 2
+        # idx = np.where(r2 < max_radius ** 2) and np.where(r2 > min_radius ** 2)
+        idx2 = np.where((r2 < max_radius ** 2) & (r2 > min_radius ** 2) & (z > min_height) & (z < max_height))
+        self.pointcloud_filtered = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(points[idx2]))
+        return self.pointcloud_filtered
+
+    # def filter_radius(self, radii=None):
+    #     if radii is None:
+    #         self.pointcloud_filtered = self.filter_by_radius(self.min_radius, self.max_radius)
+    #     else:
+    #         self.pointcloud_filtered = self.filter_by_radius(radii[0], radii[1])
+    #
+    # def filter_height(self, heights=None):
+    #     if heights is None:
+    #         self.pointcloud_filtered = self.filter_by_height(-120.0, 120.0)
+    #     else:
+    #         self.pointcloud_filtered = self.filter_by_height(heights[0], heights[1])
 
     def down_sample(self):
         if self.voxel_size is None:
             return
         self.pointcloud_filtered = self.pointcloud_filtered.voxel_down_sample(voxel_size=self.voxel_size)
 
-    def pre_process(self, plane_model=None, simple=False):
+    def pre_process(self, method=False):
         if self.pre_processed:
             print('Already preprocessed, exiting')
             return
-        # simple processing
-        self.pointcloud_filtered = self.filter_by_radius(self.min_radius, self.max_radius)
+        if method == 'icppointpoint':
+            self.preprocess_icp_point_point()
+        elif method == 'icppointplane':
+            self.preprocess_icp_point_plane()
+        elif method == 'icp2planes':
+            self.preprocess_icp2planes()
+        elif method == 'fpfh':
+            self.preprocess_fpfh()
+
+        # if simple:
+        #     return
+        # # advanced preprocessing for the two planes scanmatcher
+        # if plane_model is None:
+        #     self.plane_model = self.calculate_plane(pcd=self.pointcloud_filtered)
+        # else:
+        #     self.plane_model = plane_model
+        #
+        # pcd_ground_plane, pcd_non_ground_plane = self.segment_plane(self.plane_model, pcd=self.pointcloud_filtered)
+        # self.pointcloud_ground_plane = pcd_ground_plane
+        # self.pointcloud_non_ground_plane = pcd_non_ground_plane
+        #
+        # # self.draw_pointcloud(pcd_ground_plane)
+        # # self.draw_pointcloud(pcd_non_ground_plane)
+        #
+        # self.pointcloud_ground_plane.estimate_normals(
+        #     o3d.geometry.KDTreeSearchParamHybrid(radius=self.voxel_size_normals_ground_plane,
+        #                                          max_nn=ICP_PARAMETERS.max_nn_gd))
+        # self.pointcloud_non_ground_plane.estimate_normals(
+        #     o3d.geometry.KDTreeSearchParamHybrid(radius=self.voxel_size_normals,
+        #                                          max_nn=ICP_PARAMETERS.max_nn))
+
+    def preprocess_icp_point_point(self):
+        self.pointcloud_filtered = self.filter_radius_height()
+        if self.voxel_size is not None:
+            self.pointcloud_filtered = self.pointcloud_filtered.voxel_down_sample(voxel_size=self.voxel_size)
+        # self.pointcloud_filtered.estimate_normals(
+        #     o3d.geometry.KDTreeSearchParamHybrid(radius=self.voxel_size_normals,
+        #                                          max_nn=ICP_PARAMETERS.max_nn))
+
+    def preprocess_icp_point_plane(self):
+        self.pointcloud_filtered = self.filter_radius_height()
         if self.voxel_size is not None:
             self.pointcloud_filtered = self.pointcloud_filtered.voxel_down_sample(voxel_size=self.voxel_size)
         self.pointcloud_filtered.estimate_normals(
             o3d.geometry.KDTreeSearchParamHybrid(radius=self.voxel_size_normals,
                                                  max_nn=ICP_PARAMETERS.max_nn))
-        if simple:
-            return
+
+    def preprocess_icp2planes(self):
+        self.pointcloud_filtered = self.filter_radius_height()
+        if self.voxel_size is not None:
+            self.pointcloud_filtered = self.pointcloud_filtered.voxel_down_sample(voxel_size=self.voxel_size)
+        self.pointcloud_filtered.estimate_normals(
+            o3d.geometry.KDTreeSearchParamHybrid(radius=self.voxel_size_normals,
+                                                 max_nn=ICP_PARAMETERS.max_nn))
         # advanced preprocessing for the two planes scanmatcher
-        if plane_model is None:
-            self.plane_model = self.calculate_plane(pcd=self.pointcloud_filtered)
-        else:
-            self.plane_model = plane_model
+        # if plane_model is None:
+        self.plane_model = self.calculate_plane(pcd=self.pointcloud_filtered)
+        # else:
+        #     self.plane_model = plane_model
 
         pcd_ground_plane, pcd_non_ground_plane = self.segment_plane(self.plane_model, pcd=self.pointcloud_filtered)
         self.pointcloud_ground_plane = pcd_ground_plane
@@ -82,27 +165,74 @@ class KeyFrame():
             o3d.geometry.KDTreeSearchParamHybrid(radius=self.voxel_size_normals,
                                                  max_nn=ICP_PARAMETERS.max_nn))
 
+    def preprocess_fpfh(self):
+        self.pointcloud_filtered = self.filter_radius_height()
+        if self.voxel_size is not None:
+            self.pointcloud_filtered = self.pointcloud_filtered.voxel_down_sample(voxel_size=self.voxel_size)
+        self.pointcloud_filtered.estimate_normals(
+            o3d.geometry.KDTreeSearchParamHybrid(radius=self.voxel_size_normals,
+                                                 max_nn=ICP_PARAMETERS.max_nn))
+        # self.pointcloud_fpfh = o3d.pipelines.registration.compute_fpfh_feature(self.pointcloud_filtered,
+        #                                                 o3d.geometry.KDTreeSearchParamHybrid(radius=self.voxel_size_normals,
+        #                                                                                       max_nn=100))
+        # self.pointcloud_filtered = self.filter_radius_height()
+        if self.voxel_size is not None:
+            self.pointcloud_filtered = self.pointcloud_filtered.voxel_down_sample(voxel_size=self.voxel_size)
+        # self.pointcloud_filtered.estimate_normals(
+        #     o3d.geometry.KDTreeSearchParamHybrid(radius=self.voxel_size_normals,
+        #                                          max_nn=ICP_PARAMETERS.max_nn))
+        # advanced preprocessing for the two planes scanmatcher
+        # if plane_model is None:
+        self.plane_model = self.calculate_plane(pcd=self.pointcloud_filtered)
+        # else:
+        #     self.plane_model = plane_model
 
-    def local_registration_simple(self, other, initial_transform):
+        pcd_ground_plane, pcd_non_ground_plane = self.segment_plane(self.plane_model, pcd=self.pointcloud_filtered)
+        self.pointcloud_ground_plane = pcd_ground_plane
+        self.pointcloud_non_ground_plane = pcd_non_ground_plane
+
+        # self.draw_pointcloud(pcd_ground_plane)
+        # self.draw_pointcloud(pcd_non_ground_plane)
+
+        self.pointcloud_ground_plane.estimate_normals(
+            o3d.geometry.KDTreeSearchParamHybrid(radius=self.voxel_size_normals_ground_plane,
+                                                 max_nn=ICP_PARAMETERS.max_nn_gd))
+        self.pointcloud_non_ground_plane.estimate_normals(
+            o3d.geometry.KDTreeSearchParamHybrid(radius=self.voxel_size_normals,
+                                                 max_nn=ICP_PARAMETERS.max_nn))
+
+        self.pointcloud_fpfh = o3d.pipelines.registration.compute_fpfh_feature(self.pointcloud_non_ground_plane,
+                                                     o3d.geometry.KDTreeSearchParamHybrid(radius=self.voxel_size_normals,
+                                                                                           max_nn=100))
+
+    def local_registration_simple(self, other, initial_transform, option='pointpoint'):
         """
         use icp to compute transformation using an initial estimate.
         caution, initial_transform is a np array.
         """
         if initial_transform is None:
             initial_transform = np.eye(4)
+
+        print("Initial transformation. Viewing initial:")
+        other.draw_registration_result(self, initial_transform)
+
         print("Apply point-to-plane ICP. Local registration")
         threshold = ICP_PARAMETERS.distance_threshold
-        # reg_p2p = o3d.pipelines.registration.registration_icp(
-        #                      other.pointcloud, self.pointcloud, threshold, initial_transform,
-        #                      o3d.pipelines.registration.TransformationEstimationPointToPoint())
-        reg_p2p = o3d.pipelines.registration.registration_icp(
+        # Initial version v1.0
+        if option == 'pointpoint':
+            reg_p2p = o3d.pipelines.registration.registration_icp(
+                other.pointcloud_filtered, self.pointcloud_filtered, threshold, initial_transform,
+                o3d.pipelines.registration.TransformationEstimationPointToPoint())
+        elif option == 'pointplane':
+            reg_p2p = o3d.pipelines.registration.registration_icp(
                             other.pointcloud_filtered, self.pointcloud_filtered, threshold, initial_transform,
                             o3d.pipelines.registration.TransformationEstimationPointToPlane())
-        print(reg_p2p)
-        # print("Transformation is:")
-        # print(reg_p2p.transformation)
-        # print("")
-        # other.draw_registration_result(self, reg_p2p.transformation)
+        else:
+            print('UNKNOWN OPTION. Should be pointpoint or pointplane')
+        print('Registration result: ', reg_p2p)
+        print("Transformation is:")
+        print(reg_p2p.transformation)
+        other.draw_registration_result(self, reg_p2p.transformation)
         T = HomogeneousMatrix(reg_p2p.transformation)
         return T
 
@@ -137,30 +267,63 @@ class KeyFrame():
         beta = t1[4]
         gamma = t2[5]
         T = HomogeneousMatrix(np.array([tx, ty, tz]), Euler([alpha, beta, gamma]))
-        # other.draw_registration_result(self, T.array)
+        other.draw_registration_result(self, T.array)
+        print('Registration results: ', reg_p2pb)
         return T
 
     def global_registration(self, other):
         """
         perform global registration followed by icp
         """
-        initial_transform = o3d.pipelines.registration.registration_fast_based_on_feature_matching(
-            other.pointcloud, self.pointcloud, other.pointcloud_fpfh, self.pointcloud_fpfh,
-            o3d.pipelines.registration.FastGlobalRegistrationOption(maximum_correspondence_distance=self.fpfh_threshold))
+        # initial_transform = o3d.pipelines.registration.registration_fast_based_on_feature_matching(
+        #     other.pointcloud, self.pointcloud, other.pointcloud_fpfh, self.pointcloud_fpfh,
+        #     o3d.pipelines.registration.FastGlobalRegistrationOption(maximum_correspondence_distance=self.fpfh_threshold))
+
+        # first try: keeping the ground plane and removing tree canopies
+        # initial_transform = o3d.pipelines.registration.registration_ransac_based_on_feature_matching(
+        #     other.pointcloud_filtered, self.pointcloud_filtered, other.pointcloud_fpfh, self.pointcloud_fpfh, True,
+        #     self.fpfh_threshold,
+        #     o3d.pipelines.registration.TransformationEstimationPointToPoint(False),
+        #     3, [
+        #         o3d.pipelines.registration.CorrespondenceCheckerBasedOnEdgeLength(
+        #             0.9),
+        #         o3d.pipelines.registration.CorrespondenceCheckerBasedOnDistance(
+        #             self.fpfh_threshold)
+        #     ], o3d.pipelines.registration.RANSACConvergenceCriteria(100000, 0.999))
+
+        # try as second version: removing the ground plane
+        initial_transform = o3d.pipelines.registration.registration_ransac_based_on_feature_matching(
+            other.pointcloud_non_ground_plane, self.pointcloud_non_ground_plane, other.pointcloud_fpfh,
+            self.pointcloud_fpfh, True, self.fpfh_threshold,
+            o3d.pipelines.registration.TransformationEstimationPointToPoint(False),
+            3, [
+                o3d.pipelines.registration.CorrespondenceCheckerBasedOnEdgeLength(
+                    0.9),
+                o3d.pipelines.registration.CorrespondenceCheckerBasedOnDistance(
+                    self.fpfh_threshold)
+            ], o3d.pipelines.registration.RANSACConvergenceCriteria(100000, 0.999))
+
         # other.draw_registration_result(self, initial_transform.transformation)
 
+        print("Apply point-to-plane ICP. Local registration")
+        threshold = ICP_PARAMETERS.distance_threshold
         reg_p2p = o3d.pipelines.registration.registration_icp(
-            other.pointcloud, self.pointcloud, self.icp_threshold, initial_transform.transformation,
-            o3d.pipelines.registration.TransformationEstimationPointToPoint())
+            other.pointcloud_filtered, self.pointcloud_filtered, threshold, initial_transform.transformation,
+            o3d.pipelines.registration.TransformationEstimationPointToPlane())
+
+        # reg_p2p = o3d.pipelines.registration.registration_icp(
+        #     other.pointcloud_filtered, self.pointcloud_filtered, threshold, initial_transform.transformation,
+        #     o3d.pipelines.registration.TransformationEstimationPointToPlane())
         # other.draw_registration_result(self, reg_p2p.transformation)
         print(reg_p2p)
         print("Refined transformation is:")
         print(reg_p2p.transformation)
-        return reg_p2p.transformation
+        T = HomogeneousMatrix(reg_p2p.transformation)
+        return T
 
     def draw_registration_result(self, other, transformation):
-        source_temp = copy.deepcopy(self.pointcloud)
-        target_temp = copy.deepcopy(other.pointcloud)
+        source_temp = copy.deepcopy(self.pointcloud_filtered)
+        target_temp = copy.deepcopy(other.pointcloud_filtered)
         source_temp.paint_uniform_color([1, 0, 0])
         target_temp.paint_uniform_color([0, 0, 1])
         source_temp.transform(transformation)
@@ -187,27 +350,6 @@ class KeyFrame():
     def draw_pointcloud(self, pointcloud):
         o3d.visualization.draw_geometries([pointcloud])
 
-    # def visualize_cloud(self, vis):
-    #     vis = o3d.visualization.Visualizer()
-    #     vis.create_window()
-    #     vis.add_geometry(self.pointcloud)
-    #     vis.poll_events()
-    #     vis.update_renderer()
-    #     vis.destroy_window()
-
-    # def set_global_transform(self, transform):
-    #     self.transform = transform
-    #     return
-
-    # def transform_to_global(self, point_cloud_sampling=10):
-    #     """
-    #         Use open3d to fast transform to global coordinates.
-    #         Returns the pointcloud in global coordinates
-    #     """
-    #     T = HomogeneousMatrix(self.transform)
-    #     pointcloud = self.pointcloud.uniform_down_sample(every_k_points=point_cloud_sampling)
-    #     return pointcloud.transform(T.array)
-
     def filter_max_dist(self, max_dist=5):
         points = np.asarray(self.pointcloud.points)
         d = np.linalg.norm(points, axis=1)
@@ -223,23 +365,18 @@ class KeyFrame():
         return self.pointcloud_filtered.transform(T)
 
 
-    # def pre_processv2(self):
-    #     self.pointcloud_filtered = self.filter_by_radius(self.min_radius, self.max_radius)
-    #     self.pointcloud_filtered, ind = self.pointcloud_filtered.remove_radius_outlier(nb_points=3, radius=0.3)
-        #
-        # if self.voxel_downsample_size is not None:
-        #     self.pointcloud_filtered = self.pointcloud_filtered.voxel_down_sample(voxel_size=self.voxel_downsample_size)
-        #
-        # self.pointcloud_filtered.estimate_normals(
-        #     o3d.geometry.KDTreeSearchParamHybrid(radius=self.voxel_size_normals,
-        #                                          max_nn=ICP_PARAMETERS.max_nn))
-
     def filter_by_radius(self, min_radius, max_radius):
-        points = np.asarray(self.pointcloud.points)
+        points = np.asarray(self.pointcloud_filtered.points)
         [x, y, z] = points[:, 0], points[:, 1], points[:, 2]
         r2 = x ** 2 + y ** 2
         # idx = np.where(r2 < max_radius ** 2) and np.where(r2 > min_radius ** 2)
         idx2 = np.where((r2 < max_radius ** 2) & (r2 > min_radius ** 2))
+        return o3d.geometry.PointCloud(o3d.utility.Vector3dVector(points[idx2]))
+
+    def filter_by_height(self, min_height, max_height):
+        points = np.asarray(self.pointcloud_filtered.points)
+        [x, y, z] = points[:, 0], points[:, 1], points[:, 2]
+        idx2 = np.where((z > min_height) & (z < max_height))
         return o3d.geometry.PointCloud(o3d.utility.Vector3dVector(points[idx2]))
 
     def calculate_plane(self, pcd=None, height=-0.5, thresholdA=0.01):
@@ -329,7 +466,38 @@ class KeyFrame():
 
 
 
+    # def pre_processv2(self):
+    #     self.pointcloud_filtered = self.filter_by_radius(self.min_radius, self.max_radius)
+    #     self.pointcloud_filtered, ind = self.pointcloud_filtered.remove_radius_outlier(nb_points=3, radius=0.3)
+        #
+        # if self.voxel_downsample_size is not None:
+        #     self.pointcloud_filtered = self.pointcloud_filtered.voxel_down_sample(voxel_size=self.voxel_downsample_size)
+        #
+        # self.pointcloud_filtered.estimate_normals(
+        #     o3d.geometry.KDTreeSearchParamHybrid(radius=self.voxel_size_normals,
+        #                                          max_nn=ICP_PARAMETERS.max_nn))
 
+
+    # def visualize_cloud(self, vis):
+    #     vis = o3d.visualization.Visualizer()
+    #     vis.create_window()
+    #     vis.add_geometry(self.pointcloud)
+    #     vis.poll_events()
+    #     vis.update_renderer()
+    #     vis.destroy_window()
+
+    # def set_global_transform(self, transform):
+    #     self.transform = transform
+    #     return
+
+    # def transform_to_global(self, point_cloud_sampling=10):
+    #     """
+    #         Use open3d to fast transform to global coordinates.
+    #         Returns the pointcloud in global coordinates
+    #     """
+    #     T = HomogeneousMatrix(self.transform)
+    #     pointcloud = self.pointcloud.uniform_down_sample(every_k_points=point_cloud_sampling)
+    #     return pointcloud.transform(T.array)
 
 
 

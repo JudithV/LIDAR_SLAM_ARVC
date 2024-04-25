@@ -2,7 +2,8 @@
 Visualize the all data easily
 """
 from eurocreader.eurocreader import EurocReader
-from tools.plottools import plot_gps_OSM, plot_gps_points
+from tools.gpsconversions import gps2utm
+from tools.plottools import plot_gps_OSM, plot_gps_points, plot_utm_points
 from tools.plottools import plot_xy_data, plot_xyz_data, plot_quaternion_data
 
 
@@ -28,11 +29,17 @@ def view_gps_data(directory):
     """
     View lat/lng data on 2D. Also, plot on OSM
     """
-    euroc_read = EurocReader(directory=directory)
-    df_gps = euroc_read.read_csv(filename='/robot0/gps0/data.csv')
-    plot_gps_points(df_gps=df_gps, annotate_index=True)
-    plot_gps_points(df_gps=df_gps, annotate_error=True)
-    plot_gps_OSM(df_gps=df_gps, save_fig=True)
+    try:
+        euroc_read = EurocReader(directory=directory)
+        df_gps = euroc_read.read_csv(filename='/robot0/gps0/data.csv')
+        df_gps = gps2utm(df_gps)
+        plot_gps_points(df_gps=df_gps, annotate_index=True)
+        plot_gps_points(df_gps=df_gps, annotate_error=True)
+        plot_utm_points(df_gps=df_gps, annotate_error=True)
+        plot_gps_OSM(df_gps=df_gps, save_fig=True, expand=0.001)
+
+    except FileNotFoundError:
+        print('NO GPS DATA FOUND')
 
 
 def view_IMU_data(directory):
@@ -48,9 +55,9 @@ def view_IMU_data(directory):
 
 
 if __name__ == "__main__":
-    directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/2024-03-06-17-30-39'
+    directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O4-2024-03-20-13-14-41'
     # uncomment as necessary
-    view_gps_data(directory=directory)
-    # view_IMU_data(directory=directory)
+    view_IMU_data(directory=directory)
     # view_odo_data(directory=directory)
     view_odo_orientation_data(directory=directory)
+    view_gps_data(directory=directory)

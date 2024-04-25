@@ -18,7 +18,7 @@ def plot_delta_times(sensor_times, units=1e9, title='TITLE'):
 
 
 def main():
-    directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/2024-03-06-17-30-39'
+    directory = '/media/arvc/INTENSO/DATASETS/INDOOR/2024-03-06-13-44-09'
     euroc_read = EurocReader(directory=directory)
 
     # read LiDAR times
@@ -30,8 +30,12 @@ def main():
     odo_times = df_odo['#timestamp [ns]']
 
     # read gps times
-    df_gps = euroc_read.read_csv(filename='/robot0/gps0/data.csv')
-    gps_times = df_gps['#timestamp [ns]']
+    try:
+        df_gps = euroc_read.read_csv(filename='/robot0/gps0/data.csv')
+        gps_times = df_gps['#timestamp [ns]']
+    except FileNotFoundError:
+        print('No GPS data found')
+        gps_times = [0, 0]
 
     # read IMU times
     df_imu = euroc_read.read_csv(filename='/robot0/imu0/orientation/data.csv')

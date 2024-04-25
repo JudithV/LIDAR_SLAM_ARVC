@@ -1,20 +1,36 @@
 """
-Simple experiment using GTSAM in a GraphSLAM context.
-
-A series of
+Run a scanmatcher using O3D for consecutive scans.
 """
 from artelib.euler import Euler
 from eurocreader.eurocreader import EurocReader
 from keyframemanager.keyframemanager import KeyFrameManager
 from artelib.homogeneousmatrix import HomogeneousMatrix, compute_global_transformations, \
     compute_relative_transformations
-from artelib.quaternion import Quaternion
+import time
 import numpy as np
 import matplotlib.pyplot as plt
 from tools.gpsconversions import gps2utm
 from tools.sampling import sample_odometry, sample_times
-from config import ICP_PARAMETERS
+# from config import ICP_PARAMETERS
 from artelib.homogeneousmatrix import compute_homogeneous_transforms
+import getopt
+import sys
+
+def find_options(argv):
+    euroc_path = None
+    try:
+        opts, args = getopt.getopt(argv, "hi:", ["ifile="])
+    except getopt.GetoptError:
+        print('python run_scanmatcher.py -i <euroc_directory>')
+        sys.exit(2)
+    for opt, arg in opts:
+        if opt == '-h':
+            print('python run_scanmatcher.py -i <euroc_directory>')
+            sys.exit()
+        elif opt in ("-i", "--ifile"):
+            euroc_path = arg
+    print('Input EUROC directory is: ', euroc_path)
+    return euroc_path
 
 
 def plot_odometry(df_odo):
@@ -43,7 +59,6 @@ def plot_transformations(transforms):
     # plt.show()
 
 
-
 def view_results(relative_transforms_scanmatcher, relative_transforms_odo, df_gps):
     """
     Comparing odo, the scanmatcher result and GPS if available.
@@ -64,7 +79,6 @@ def view_results(relative_transforms_scanmatcher, relative_transforms_odo, df_gp
     plot_transformations(global_transforms_scanmatcher)
     plt.plot(utm_coords_x, utm_coords_y)
     plt.show()
-
 
 
 def compute_relative_odometry_transformations(df_odo):
@@ -91,11 +105,15 @@ def prepare_experiment_data(euroc_read, start_index=20, delta_time=1.0):
     odo_times = euroc_read.get_closest_times(master_sensor_times=scan_times, sensor_times=odo_times)
     # now for each time, get the corresponding odometry value
     df_odo = euroc_read.get_df_at_times(df_data=df_odo, time_list=odo_times)
-    # read and sample gps data
-    df_gps = euroc_read.read_csv(filename='/robot0/gps0/data.csv')
-    gps_times = df_gps['#timestamp [ns]'].to_numpy()
-    gps_times = euroc_read.get_closest_times(master_sensor_times=scan_times, sensor_times=gps_times)
-    df_gps = euroc_read.get_df_at_times(df_data=df_gps, time_list=gps_times)
+    # read and sample gps data, if possible
+    try:
+        df_gps = euroc_read.read_csv(filename='/robot0/gps0/data.csv')
+        gps_times = df_gps['#timestamp [ns]'].to_numpy()
+        gps_times = euroc_read.get_closest_times(master_sensor_times=scan_times, sensor_times=gps_times)
+        df_gps = euroc_read.get_df_at_times(df_data=df_gps, time_list=gps_times)
+    except FileNotFoundError:
+        gps_times = None
+        df_gps = None
     return scan_times, odo_times, gps_times, df_odo, df_gps
 
 
@@ -111,44 +129,52 @@ def scanmatcher():
     Sample times from lidar, then find the corresponding data in odometry.
     Transform odometry to relative movements
     """
-    directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/2024-03-06-17-30-39'
+    directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O2-2024-03-07-13-33-34'
     # caution, this is needed to remove initial LiDAR scans with no other data associated to it
-    start_index = 15
+    start_index = 0
     # sample LiDAR scans with delta_time in seconds
-    delta_time = 0.5
+    delta_time = 0.3
     # voxel size: pointclouds will be filtered with this voxel size
     voxel_size = None
     # select the simple scanmatcher (simple_scanmatcher=True) or the advanced scanmatcher (simple_scanmatcher=False)
-    simple_scanmatcher = True
+    # method = 'icppointpoint'
+    # method = 'icppointplane'
+    method = 'icp2planes'
+    # method = 'fpfh'
     euroc_read = EurocReader(directory=directory)
     # caution, remove 20 samples (approx.) from the LiDAR data until data capture is stabilized
     scan_times, odo_times, gps_times, df_odo, df_gps = prepare_experiment_data(euroc_read=euroc_read,
                                                                                start_index=start_index,
                                                                                delta_time=delta_time)
     relative_transforms_odo = compute_relative_odometry_transformations(df_odo=df_odo)
-
-    # keyframe_manager = KeyFrameManager(directory=directory, scan_times=scan_times, voxel_size=ICP_PARAMETERS.voxel_size)
+    # Create the KeyFrameManager to store all scans and compute relative transformations
     keyframe_manager = KeyFrameManager(directory=directory, scan_times=scan_times, voxel_size=voxel_size)
     relative_transforms_scanmatcher = []
     keyframe_manager.add_keyframe(0)
-    keyframe_manager.pre_process(0, simple=simple_scanmatcher)
+    keyframe_manager.load_pointcloud(0)
+    keyframe_manager.pre_process(0, method=method)
+    start_t = time.time()
+
     # now run the scanmatcher routine, for each pair of scans
     for i in range(0, len(scan_times)-1):
         print('Adding keyframe and computing transform: ', i, 'out of ', len(scan_times))
         print('Experiment time is (s): ', (scan_times[i]-scan_times[0])/1e9)
         # add current keyframe
         keyframe_manager.add_keyframe(i+1)
-        keyframe_manager.pre_process(i+1, simple=simple_scanmatcher)
+        keyframe_manager.load_pointcloud(i+1)
+        keyframe_manager.pre_process(i+1, method=method)
         atb_odo = relative_transforms_odo[i]
         print('Initial transform')
         atb_odo.print_nice()
-        # usando 2 planes o simple?
-        atbsm = keyframe_manager.compute_transformation_local(i, i+1, Tij=atb_odo, simple=simple_scanmatcher)
+        atbsm = keyframe_manager.compute_transformation(i, i + 1, Tij=atb_odo, method=method)
         relative_transforms_scanmatcher.append(atbsm)
         atbsm.print_nice()
+        end_t = time.time()
+        print('COMPUTATION TIME: ', (end_t-start_t)/(i+1))
 
     # view results in matplotlib. Caution: both global results are modified by T0 using GPS information
-    view_results(relative_transforms_scanmatcher, relative_transforms_odo, df_gps)
+    # CAUTION: made to observe the results in case GPS is available
+    # view_results(relative_transforms_scanmatcher, relative_transforms_odo, df_gps)
 
     # compute the global transformations using scanmatching
     global_transforms_scanmatcher = compute_global_transformations(relative_transforms_scanmatcher, T0=None)
@@ -162,7 +188,6 @@ def scanmatcher():
     # save global transforms
     euroc_read.save_transforms_as_csv(scan_times, global_transforms_scanmatcher,
                                       filename='/robot0/scanmatcher/scanmatcher_global.csv')
-
 
 
 if __name__ == "__main__":

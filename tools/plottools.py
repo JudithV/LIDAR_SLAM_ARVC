@@ -151,6 +151,19 @@ def plot_xy_data(df_data, title='TITLE', sample=10, annotate_time=False):
             plt.annotate(txt, (df_data['x'][i], df_data['y'][i]), fontsize=12)
     plt.show()
 
+def plot_3D_data(df_data):
+    """
+        Print and plot the result simply. in 3D
+    """
+
+    fig = plt.figure(0)
+    axes = fig.gca(projection='3d')
+    plt.cla()
+    axes.scatter(df_data['x'], df_data['y'], df_data['z'])
+
+
+
+
 
 def compute_distance(lat1, lng1, lat2, lng2):
     from math import sin, cos, sqrt, atan2, radians
@@ -194,6 +207,62 @@ def plot_gps_points(df_gps, title='GPS POINTS (index, radius error in meters)',
             txt = "{:.3f}".format(s_x)
             plt.annotate(txt, (df_gps['longitude'][i], df_gps['latitude'][i]), fontsize=12)
     plt.show(block=True)
+
+def plot_utm_points(df_gps, title='UTM POINTS (index, radius error in meters)',
+                    annotate_index=False, annotate_error=False):
+    """
+    df_gt_gps: ground truth
+    df_trajectory_gps: the trajectory
+    :param df_gt_gps:
+    :param zoom:
+    :param color:
+    :return:
+    """
+    plt.figure()
+    plt.scatter(x=df_gps['x'], y=df_gps['y'])
+    plt.title(title)
+    plt.xlabel('x (m)')
+    plt.ylabel('y (m)')
+    if annotate_index:
+        for i in range(0, len(df_gps['x']), 10):
+            txt = str(i)
+            plt.annotate(txt, (df_gps['x'][i], df_gps['y'][i]), fontsize=12)
+    if annotate_error:
+        for i in range(0, len(df_gps['x']), 10):
+            s_x = 2 * np.sqrt(df_gps['covariance_d1'][i])
+            txt = "{:.3f}".format(s_x)
+            plt.annotate(txt, (df_gps['x'][i], df_gps['y'][i]), fontsize=12)
+    plt.show(block=True)
+
+
+def plot_gps_OSM(df_gps, expand=0.001, save_fig=False):
+    tilemapbase.init(create=True)
+
+    extent = tilemapbase.Extent.from_lonlat(
+        df_gps.longitude.min() - expand,
+        df_gps.longitude.max() + expand,
+        df_gps.latitude.min() - expand,
+        df_gps.latitude.max() + expand,
+        )
+    trip_projected = df_gps.apply(
+        lambda x: tilemapbase.project(x.longitude, x.latitude), axis=1
+    ).apply(pd.Series)
+    trip_projected.columns = ["x", "y"]
+
+    tiles = tilemapbase.tiles.build_OSM()
+    fig, ax = plt.subplots(figsize=(8, 8), dpi=300)
+    ax.xaxis.set_visible(False)
+    ax.yaxis.set_visible(False)
+    plotter = tilemapbase.Plotter(extent, tiles, height=600)
+    plotter.plot(ax, tiles, alpha=0.8)
+    ax.plot(trip_projected.x, trip_projected.y, color='blue', linewidth=1)
+    # ax.scatter(trip_projected.x, trip_projected.y, color='blue')
+    plt.axis('off')
+    plt.show(block=True)
+    if save_fig:
+        fig.savefig('trip.png', bbox_inches='tight', pad_inches=0, dpi=300)
+
+
 
 #
 # def error_ellipse(ax, xc, yc, cov, sigma=10, **kwargs):
@@ -247,35 +316,6 @@ def plot_gps_points(df_gps, title='GPS POINTS (index, radius error in meters)',
 #         # plt.annotate(txt, (df_gps['longitude'][i], df_gps['latitude'][i]), fontsize=12)
 #
 #     plt.show(block=True)
-
-def plot_gps_OSM(df_gps, expand=0.01, save_fig=False):
-    tilemapbase.init(create=True)
-    # plt.scatter(df_gps['longitude'], df_gps['latitude'])
-    # expand = 0.0001
-    extent = tilemapbase.Extent.from_lonlat(
-        df_gps.longitude.min() - expand,
-        df_gps.longitude.max() + expand,
-        df_gps.latitude.min() - expand,
-        df_gps.latitude.max() + expand,
-        )
-    trip_projected = df_gps.apply(
-        lambda x: tilemapbase.project(x.longitude, x.latitude), axis=1
-    ).apply(pd.Series)
-    trip_projected.columns = ["x", "y"]
-
-    tiles = tilemapbase.tiles.build_OSM()
-    fig, ax = plt.subplots(figsize=(8, 8), dpi=300)
-    ax.xaxis.set_visible(False)
-    ax.yaxis.set_visible(False)
-    plotter = tilemapbase.Plotter(extent, tiles, height=600)
-    plotter.plot(ax, tiles, alpha=0.8)
-    ax.plot(trip_projected.x, trip_projected.y, color='blue', linewidth=1)
-    # ax.scatter(trip_projected.x, trip_projected.y, color='blue')
-    plt.axis('off')
-    plt.show(block=True)
-    if save_fig:
-        fig.savefig('trip.png', bbox_inches='tight', pad_inches=0, dpi=300)
-
 
 
 #     plt.plot(range(len(data)), data[:, 0], color='red', linestyle='dashed', marker='o', markersize=12)

@@ -6,7 +6,7 @@ from keyframemanager.keyframemanager import KeyFrameManager
 
 
 def main():
-    directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/2024-03-06-17-30-39'
+    directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O4-2024-03-20-13-14-41'
     euroc_read = EurocReader(directory=directory)
     scan_times = euroc_read.read_csv(filename='/robot0/lidar/data.csv')
     scan_times = scan_times['#timestamp [ns]'].to_numpy()
