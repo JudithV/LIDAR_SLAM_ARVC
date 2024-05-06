@@ -181,7 +181,7 @@ def compute_relative_transformations(global_transforms):
     return transforms_relative
 
 
-def compute_global_transformations(transforms_relative, T0):
+def compute_global_transformations(transforms_relative, T0, Trobot_gps):
     """
     Compute global transformations from relative transformations, starting at T0.
     """
@@ -189,12 +189,24 @@ def compute_global_transformations(transforms_relative, T0):
         T = HomogeneousMatrix()
     else:
         T = T0
+    if Trobot_gps is None:
+        Trobot_gps = HomogeneousMatrix()
     transforms_global = []
-    transforms_global.append(T)
+    transforms_global.append(T0)
     # compute global transformations from relative
     for i in range(len(transforms_relative)):
         Tij = transforms_relative[i]
         # Tij.print_nice()
         T = T*Tij
         transforms_global.append(T)
+    # given that the global coordinates are computed, now compute a relative transform
+    for i in range(len(transforms_global)):
+        transforms_global[i] = transforms_global[i]*Trobot_gps
     return transforms_global
+
+
+def multiply_by_transform(transforms, Trel):
+    transforms_result = []
+    for i in range(len(transforms)):
+        transforms_result.append(transforms[i]*Trel)
+    return transforms_result

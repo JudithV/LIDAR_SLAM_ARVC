@@ -6,26 +6,26 @@ import gtsam
 import gtsam.utils.plot as gtsam_plot
 import matplotlib.pyplot as plt
 import numpy as np
+from artelib.homogeneousmatrix import HomogeneousMatrix
 
 
 # Declare the 3D translational standard deviations of the prior factor's Gaussian model, in meters.
-from artelib.homogeneousmatrix import HomogeneousMatrix
-
 prior_xyz_sigma = 10.0000000
 # Declare the 3D rotational standard deviations of the prior factor's Gaussian model, in degrees.
 prior_rpy_sigma = 10.0000000
 # Declare the 3D translational standard deviations of the odometry factor's Gaussian model, in meters.
-odo_xyz_sigma = 0.01
+odo_xyz_sigma = 0.1
 # Declare the 3D rotational standard deviations of the odometry factor's Gaussian model, in degrees.
-odo_rpy_sigma = 2
+odo_rpy_sigma = 3
 # Declare the 3D translational standard deviations of the scanmatcher factor's Gaussian model, in meters.
-icp_xyz_sigma = 0.01
+icp_xyz_sigma = 0.05
 # Declare the 3D rotational standard deviations of the odometry factor's Gaussian model, in degrees.
-icp_rpy_sigma = 0.01
+icp_rpy_sigma = 0.05
 # GPS noise: in UTM, x, y, height
 gps_xy_sigma = 0.5
-gps_altitude_sigma = 1.0
+gps_altitude_sigma = 2.0
 
+# Declare the noise models
 PRIOR_NOISE = gtsam.noiseModel.Diagonal.Sigmas(np.array([prior_rpy_sigma*np.pi/180,
                                                          prior_rpy_sigma*np.pi/180,
                                                          prior_rpy_sigma*np.pi/180,
@@ -51,11 +51,15 @@ GPS_NOISE = gtsam.Point3(gps_xy_sigma, gps_xy_sigma, gps_altitude_sigma)
 
 
 class GraphSLAMSO3():
-    def __init__(self):
+    def __init__(self, T0, T0_gps):
         # self.current_index = 0
         self.graph = gtsam.NonlinearFactorGraph()
         self.initial_estimate = gtsam.Values()
         self.current_estimate = gtsam.Values()
+
+        # transforms
+        self.T0 = T0
+        self.T0_gps = T0_gps
 
         # noises
         self.PRIOR_NOISE = PRIOR_NOISE
@@ -70,8 +74,9 @@ class GraphSLAMSO3():
         self.isam = gtsam.ISAM2(parameters)
 
     def init_graph(self):
+        T = self.T0
         # init graph starting at 0 and with initial pose T0 = eye
-        self.graph.push_back(gtsam.PriorFactorPose3(0, gtsam.Pose3(), self.PRIOR_NOISE))
+        self.graph.push_back(gtsam.PriorFactorPose3(0, gtsam.Pose3(T.array), self.PRIOR_NOISE))
         # CAUTION: the initial T0 transform is the identity.
         self.initial_estimate.insert(0, gtsam.Pose3())
         # self.current_estimate = self.initial_estimate
@@ -87,9 +92,9 @@ class GraphSLAMSO3():
         self.graph.add(gtsam.GPSFactor(i, utm, self.GPS_NOISE))
 
     def add_initial_estimate(self, atb, k):
-        next_estimate = self.current_estimate.atPose3(k).compose(gtsam.Pose3(atb.array))
-        self.initial_estimate.insert(k + 1, next_estimate)
-        self.current_estimate.insert(k + 1, next_estimate)
+        next_estimate = self.current_estimate.atPose3(k-1).compose(gtsam.Pose3(atb.array))
+        self.initial_estimate.insert(k, next_estimate)
+        self.current_estimate.insert(k, next_estimate)
 
     def optimize(self):
         self.isam.update(self.graph, self.initial_estimate)
@@ -111,9 +116,12 @@ class GraphSLAMSO3():
             marginals = gtsam.Marginals(self.graph, self.current_estimate)
 
         # Plot the newly updated iSAM2 inference.
-        fig = plt.figure(0)
-        axes = fig.gca(projection='3d')
-        plt.cla()
+        if plot3D:
+            fig = plt.figure(0)
+            axes = fig.gca(projection='3d')
+            plt.cla()
+        else:
+            fig = plt.figure(0)
 
         i = 0
         while self.current_estimate.exists(i):
@@ -122,60 +130,79 @@ class GraphSLAMSO3():
                     gtsam_plot.plot_pose3(0, self.current_estimate.atPose3(i), 0.5,
                                                 marginals.marginalCovariance(i))
                 else:
-                    gtsam_plot.plot_pose2(0, self.current_estimate.atPose2(i), 0.5,
+                    gtsam_plot.plot_pose2(0, self.current_estimate.atPose3(i), 0.5,
                                           marginals.marginalCovariance(i))
             else:
                 if plot3D:
                     gtsam_plot.plot_pose3(0, self.current_estimate.atPose3(i), 0.5, None)
                 else:
-                    gtsam_plot.plot_pose2(0, self.current_estimate.atPose2(i), 0.5, None)
+                    gtsam_plot.plot_pose2(0, self.current_estimate.atPose3(i), 0.5, None)
 
             i += np.max([skip, 1])
-
-        # axes.set_xlim3d(-30, 45)
-        # axes.set_ylim3d(-30, 45)
-        # axes.set_zlim3d(-30, 45)
         plt.pause(.01)
 
-    def plot_simple(self, skip=1):
+    def plot_simple(self, plot3D = True, skip=1):
         """
         Print and plot the result simply.
         """
-        # Plot the newly updated iSAM2 inference.
-        fig = plt.figure(0)
-        axes = fig.gca(projection='3d')
-        plt.cla()
+        if plot3D:
+            # Plot the newly updated iSAM2 inference.
+            fig = plt.figure(0)
+            axes = fig.gca(projection='3d')
+            plt.cla()
 
+            i = 0
+            data = []
+            while self.current_estimate.exists(i):
+                ce = self.current_estimate.atPose3(i)
+                T = HomogeneousMatrix(ce.matrix())
+                data.append(T.pos())
+                i += np.max([skip, 1])
+            data = np.array(data)
+            axes.scatter(data[:, 0], data[:, 1], data[:, 2])
+        else:
+            # Plot the newly updated iSAM2 inference.
+            fig = plt.figure(0)
+            plt.cla()
+            i = 0
+            data = []
+            while self.current_estimate.exists(i):
+                ce = self.current_estimate.atPose3(i)
+                T = HomogeneousMatrix(ce.matrix())
+                data.append(T.pos())
+                i += np.max([skip, 1])
+            data = np.array(data)
+            plt.plot(data[:, 0], data[:, 1], '.', color='blue')
+            plt.xlabel('X (m, UTM)')
+            plt.ylabel('Y (m, UTM)')
+        plt.pause(0.00001)
+
+    def plot_compare_GPS(self, df_gps, correspondences):
+        """
+        Print and plot the result simply.
+        """
+        plt.figure(5)
         i = 0
         data = []
         while self.current_estimate.exists(i):
             ce = self.current_estimate.atPose3(i)
             T = HomogeneousMatrix(ce.matrix())
             data.append(T.pos())
-            i += np.max([skip, 1])
+            i += 1
         data = np.array(data)
-        axes.scatter(data[:, 0], data[:, 1], data[:, 2])
-
-
-
-        # axes.set_xlim3d(-30, 45)
-        # axes.set_ylim3d(-30, 45)
-        # axes.set_zlim3d(-30, 45)
-        plt.pause(.01)
-
-    # def plot2D(self, plot_uncertainty_ellipse, skip):
-    #     # init initial estimate, read from self.current_solution
-    #     initial_estimate = gtsam.Values()
-    #     k = 0
-    #     for pose2 in self.current_solution:
-    #         initial_estimate.insert(k, gtsam.Pose2(pose2[0], pose2[1], pose2[2]))
-    #         k = k+1
-    #     marginals = gtsam.Marginals(self.graph, initial_estimate)
-    #     for i in range(self.n_vertices):
-    #         gtsam_plot.plot_pose2(0, initial_estimate.atPose2(i), 0.5,
-    #                               marginals.marginalCovariance(i))
-    #     plt.axis('equal')
-    #     plt.show()
+        # data = data[0:150]
+        # df_gps = df_gps[0:150]
+        plt.plot(data[:, 0], data[:, 1], marker='.', color='blue')
+        plt.plot(df_gps['x'], df_gps['y'], marker='o', color='red')
+        plt.legend(['GraphSLAM estimation', 'GPS UTM'])
+        plt.title('Correspondences (estimation, GPS)')
+        # plt.figure()
+        for c in correspondences:
+            x = [data[c[0], 0], df_gps['x'][c[1]]]
+            y = [data[c[0], 1], df_gps['y'][c[1]]]
+            plt.plot(x, y, color='black', linewidth=5)
+            # plt.show()
+        plt.pause(0.01)
 
     def get_solution(self):
         return self.current_estimate
@@ -190,85 +217,13 @@ class GraphSLAMSO3():
             i += 1
         return solution_transforms
 
-
-    # def add_consecutive_observation(self, atb):
-    #     """
-    #     aTb is a relative transformation from a to b
-    #     Add a vertex considering two consecutive poses
-    #     """
-    #     self.n_vertices = self.n_vertices + 1
-    #     self.n_edges = self.n_edges + 1
-    #     k = self.current_index
-    #     # add consecutive observation
-    #     self.graph.add(gtsam.BetweenFactorPose3(k, k + 1, gtsam.Pose3(atb.array), self.SM_NOISE))
-    #
-    #     # compute next estimation
-    #     next_estimate = self.current_estimate.atPose3(k).compose(gtsam.Pose3(atb.array))
-    #     self.initial_estimate.insert(k + 1, next_estimate)
-    #     self.current_index = k + 1
-    #     # self.isam.update(self.graph, self.initial_estimate)
-    #     # self.current_estimate = self.isam.calculateEstimate()
-
-
-    # def add_non_consecutive_observation(self, i, j, aTb):
-    #     """
-    #     aTb is a relative transformation from frame i to frame j
-    #     Add a vertex considering two consecutive poses
-    #     """
-    #     self.n_edges = self.n_edges + 1
-    #     # add non consecutive observation
-    #     self.graph.add(gtsam.BetweenFactorPose2(int(i), int(j), gtsam.Pose2(aTb[0], aTb[1], aTb[2]), self.ICP_NOISE))
-
-
-
-
-
-        # if report_on_progress:
-        #     self.report_on_progress()
-
-        # # init initial estimate, read from self.current_solution
-        # initial_estimate = gtsam.Values()
-        # k = 0
-        # for c_solution_k in self.current_solution:
-        #     initial_estimate.insert(k, gtsam.Pose2(c_solution_k[0], c_solution_k[1], c_solution_k[2]))
-        #     k = k+1
-        # # solver parameters
-        # parameters = gtsam.GaussNewtonParams()
-        # # Stop iterating once the change in error between steps is less than this value
-        # parameters.setRelativeErrorTol(1e-5)
-        # # Do not perform more than N iteration steps
-        # parameters.setMaxIterations(100)
-        # # Create the optimizer ...
-        # optimizer = gtsam.GaussNewtonOptimizer(self.graph, initial_estimate, parameters)
-        #
-        # # ... and optimize
-        # result = optimizer.optimize()
-        # print("Final Result:\n{}".format(result))
-
-        # print("GRAPH")
-        # print(self.graph)
-
-        # 5. Calculate and print marginal covariances for all variables
-        # marginals = gtsam.Marginals(self.graph, result)
-        # for i in range(self.n_vertices):
-        #     print("X{} covariance:\n{}\n".format(i,
-        #                                          marginals.marginalCovariance(i)))
-        #
-        # for i in range(self.n_vertices):
-        #     gtsam_plot.plot_pose2(0, result.atPose2(i), 0.5,
-        #                           marginals.marginalCovariance(i))
-        # plt.axis('equal')
-        # plt.show()
-
-        # now save the solution, caution, the current solution is used as initial
-        # estimate in subsequent calls to optimize
-        # self.current_solution = []
-        # for i in range(self.n_vertices):
-        #     x = result.atPose2(i).translation()[0]
-        #     y = result.atPose2(i).translation()[1]
-        #     th = result.atPose2(i).rotation().theta()
-        #     self.current_solution.append(np.array([x, y, th]))
-        # self.current_solution = np.array(self.current_solution)
-
-
+    def get_solution_transforms_lidar(self):
+        solution_transforms = []
+        i = 0
+        while self.current_estimate.exists(i):
+            ce = self.current_estimate.atPose3(i)
+            T = HomogeneousMatrix(ce.matrix())
+            solution_transforms.append(T*self.T0_gps.inv())
+            i += 1
+        return solution_transforms
 

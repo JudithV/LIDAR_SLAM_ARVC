@@ -15,6 +15,9 @@ from tools.sampling import sample_odometry, sample_times
 from artelib.homogeneousmatrix import compute_homogeneous_transforms
 import getopt
 import sys
+from artelib.vector import Vector
+from artelib.euler import Euler
+
 
 def find_options(argv):
     euroc_path = None
@@ -124,37 +127,47 @@ def scanmatcher():
     - delta_time: the time between LiDAR scans. Beware that, in the ARVC dataset, the initial sample time for LiDARS may be
     as high as 1 second. In this case, a sensible delta_time would be 1s, so as to use all LiDAR data.
     - voxel_size: whether to reduce the pointcloud
-    
-    Please beware that t
-    Sample times from lidar, then find the corresponding data in odometry.
-    Transform odometry to relative movements
+
+    CAUTION:  the scanmatcher produces the movement of the LIDAR as installed on the robot. Transformation from odometry to LIDAR
+    and LIDAR TO GPS may be needed to produce quality results for mapping or SLAM.
     """
+    ################################################################################################
+    # CONFIGURATION
+    ################################################################################################
     directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O2-2024-03-07-13-33-34'
     # caution, this is needed to remove initial LiDAR scans with no other data associated to it
     start_index = 0
-    # sample LiDAR scans with delta_time in seconds
+    # sample LiDAR scans with delta_time in seconds (of course, depends on available data)
     delta_time = 0.3
     # voxel size: pointclouds will be filtered with this voxel size
     voxel_size = None
-    # select the simple scanmatcher (simple_scanmatcher=True) or the advanced scanmatcher (simple_scanmatcher=False)
+    # select the simple scanmatcher method. Recommended: icppointplane
     # method = 'icppointpoint'
-    # method = 'icppointplane'
-    method = 'icp2planes'
+    method = 'icppointplane'
+    # method = 'icp2planes'
     # method = 'fpfh'
+    ################################################################################################
+    # COMPUTATION OF GLOBAL TRANSFORMATIONS
+    # T0: initial origin of all transformations
+    T0 = HomogeneousMatrix(np.eye(4))
+    # Transformation from the robot's center of mass to the GPS reference system
+    # T0_gps = HomogeneousMatrix(Vector([0.36, 0, 0]), Euler([0, 0, 0]))
+    ###############################################################################################
+    # READ EXPERIMENT DATA
     euroc_read = EurocReader(directory=directory)
     # caution, remove 20 samples (approx.) from the LiDAR data until data capture is stabilized
+    # GPS is read only to check results
     scan_times, odo_times, gps_times, df_odo, df_gps = prepare_experiment_data(euroc_read=euroc_read,
                                                                                start_index=start_index,
                                                                                delta_time=delta_time)
     relative_transforms_odo = compute_relative_odometry_transformations(df_odo=df_odo)
     # Create the KeyFrameManager to store all scans and compute relative transformations
-    keyframe_manager = KeyFrameManager(directory=directory, scan_times=scan_times, voxel_size=voxel_size)
+    keyframe_manager = KeyFrameManager(directory=directory, scan_times=scan_times, voxel_size=voxel_size, method=method)
     relative_transforms_scanmatcher = []
     keyframe_manager.add_keyframe(0)
     keyframe_manager.load_pointcloud(0)
-    keyframe_manager.pre_process(0, method=method)
+    keyframe_manager.pre_process(0)
     start_t = time.time()
-
     # now run the scanmatcher routine, for each pair of scans
     for i in range(0, len(scan_times)-1):
         print('Adding keyframe and computing transform: ', i, 'out of ', len(scan_times))
@@ -162,11 +175,11 @@ def scanmatcher():
         # add current keyframe
         keyframe_manager.add_keyframe(i+1)
         keyframe_manager.load_pointcloud(i+1)
-        keyframe_manager.pre_process(i+1, method=method)
+        keyframe_manager.pre_process(i+1)
         atb_odo = relative_transforms_odo[i]
         print('Initial transform')
         atb_odo.print_nice()
-        atbsm = keyframe_manager.compute_transformation(i, i + 1, Tij=atb_odo, method=method)
+        atbsm = keyframe_manager.compute_transformation(i, i + 1, Tij=atb_odo)
         relative_transforms_scanmatcher.append(atbsm)
         atbsm.print_nice()
         end_t = time.time()
@@ -177,17 +190,24 @@ def scanmatcher():
     # view_results(relative_transforms_scanmatcher, relative_transforms_odo, df_gps)
 
     # compute the global transformations using scanmatching
-    global_transforms_scanmatcher = compute_global_transformations(relative_transforms_scanmatcher, T0=None)
+    # The position of the robot
+    global_transforms_scanmatcher = compute_global_transformations(relative_transforms_scanmatcher, T0=T0, Trobot_gps=None)
+    # The position of the robot
+    # global_transforms_scanmatcher_gps = compute_global_transformations(relative_transforms_scanmatcher, T0=T0, Trobot_gps=T0_gps)
 
     # save to a directory so that maps can be later built
     # save times for the sensor. Please, beware that, in this sense, there are n-1 times in the relative transformations
     euroc_read.save_sensor_times_as_csv(scan_times, filename='/robot0/scanmatcher/lidar_times.csv')
+
     # save scanmatcher transforms. Relative
     euroc_read.save_transforms_as_csv(scan_times, relative_transforms_scanmatcher,
                                       filename='/robot0/scanmatcher/scanmatcher_relative.csv')
     # save global transforms
     euroc_read.save_transforms_as_csv(scan_times, global_transforms_scanmatcher,
                                       filename='/robot0/scanmatcher/scanmatcher_global.csv')
+    # save global transforms, estimated GPS position
+    # euroc_read.save_transforms_as_csv(scan_times, global_transforms_scanmatcher_gps,
+    #                                   filename='/robot0/scanmatcher/scanmatcher_gps_global.csv')
 
 
 if __name__ == "__main__":

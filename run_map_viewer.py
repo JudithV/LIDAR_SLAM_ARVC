@@ -15,7 +15,7 @@ from artelib.homogeneousmatrix import compute_homogeneous_transforms
 import open3d as o3d
 
 
-def visualize_map_online(global_transforms, keyframemanager, keyframe_sampling=10, radii=None, heights=None):
+def visualize_map_online(global_transforms, keyframe_manager, keyframe_sampling=10, radii=None, heights=None):
     """
     Builds map rendering updates at each frame.
 
@@ -26,11 +26,16 @@ def visualize_map_online(global_transforms, keyframemanager, keyframe_sampling=1
         radii = [0.5, 35.0]
     if heights is None:
         heights = [-120.0, 120.0]
+    # caution: sample transforms
+    sampled_global_transforms = []
+    for i in range(0, len(global_transforms), keyframe_sampling):
+        sampled_global_transforms.append(global_transforms[i])
+
     print("COMPUTING MAP FROM KEYFRAMES")
     # First: add all keyframes with the known sampling
-    keyframemanager.add_keyframes(keyframe_sampling=keyframe_sampling)
-    keyframemanager.visualize_map_online(global_transforms=global_transforms, keyframe_sampling=keyframe_sampling,
-                                         radii=radii, heights=heights)
+    keyframe_manager.add_keyframes(keyframe_sampling=keyframe_sampling)
+    keyframe_manager.load_pointclouds()
+    keyframe_manager.visualize_map_online(global_transforms=sampled_global_transforms, radii=radii, heights=heights)
 
 
 
@@ -49,9 +54,9 @@ def main():
     # Read the final transform (i.e. via GraphSLAM)
     # You may be using different estimations to build the map: i.e. scanmatching or the results from graphSLAM
     # select as desired
-    directory = '/media/arvc/INTENSO/DATASETS/INDOOR/2024-03-06-13-44-09'
-    # filename = '/robot0/SLAM/solution_graphslam_sm.csv'
-    filename = '/robot0/scanmatcher/scanmatcher_global.csv'
+    directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O1-2024-03-06-17-30-39'
+    # filename = '/robot0/scanmatcher/scanmatcher_global.csv'
+    filename = '/robot0/SLAM/solution_graphslam.csv'
     # use, for example, 1 out of 5 LiDARS to build the map
     keyframe_sampling = 20
     # use, for example, voxel_size=0.2. Use voxel_size=None to use full resolution

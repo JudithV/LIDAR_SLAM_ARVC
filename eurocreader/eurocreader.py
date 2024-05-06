@@ -1,4 +1,7 @@
 import numpy as np
+import yaml
+
+from artelib.homogeneousmatrix import HomogeneousMatrix
 from artelib.quaternion import Quaternion
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -35,10 +38,16 @@ class EurocReader():
     #     df_gt = pd.read_csv(gt_csv_filename)
     #     return df_gt
 
-    # def read_odometry_data(self):
-    #     odo_csv_filename = self.directory + '/robot0/odom/data.csv'
-    #     df_odo = pd.read_csv(odo_csv_filename)
-    #     return df_odo
+    def read_transform(self, sensor):
+        print('Reading transformation for sensor: ', sensor)
+        transform_yaml_filename = self.directory + '/robot0/' + sensor + '/transform.yaml'
+        print('Transformation file is: ', transform_yaml_filename)
+        with open(transform_yaml_filename) as file:
+            config = yaml.load(file, Loader=yaml.FullLoader)
+        T = HomogeneousMatrix(config['transform'])
+        print('Found transformation: ')
+        T.print_nice()
+        return T
 
     def read_csv(self, filename):
         full_filename = self.directory + filename

@@ -4,6 +4,7 @@ Visualize delta_t for each sensor.
 from eurocreader.eurocreader import EurocReader
 import numpy as np
 import matplotlib.pyplot as plt
+from datetime import datetime
 
 
 def plot_delta_times(sensor_times, units=1e9, title='TITLE'):
@@ -18,7 +19,7 @@ def plot_delta_times(sensor_times, units=1e9, title='TITLE'):
 
 
 def main():
-    directory = '/media/arvc/INTENSO/DATASETS/INDOOR/2024-03-06-13-44-09'
+    directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O5-2024-04-24-12-47-35'
     euroc_read = EurocReader(directory=directory)
 
     # read LiDAR times
@@ -61,11 +62,19 @@ def main():
     print(30*'*')
 
     print(30 * '*')
-    print('TOTAL EPOCH TIMES: ')
+    print('TOTAL EPOCH TIMES (START END) ')
     print('LiDAR: ', lidar_times[0], lidar_times[-1])
     print('Odometry: ', odo_times[0], odo_times[-1])
     print('GPS: ', gps_times[0], gps_times[-1])
     print('IMU: ', imu_times[0], imu_times[-1])
+    print(30 * '*')
+
+    print(30 * '*')
+    print('EXPERIMENT START-END (HUMAN READABLE)')
+    print('LiDAR: ', datetime.fromtimestamp(lidar_times[0] // 1000000000), '/', datetime.fromtimestamp(lidar_times[-1] // 1000000000))
+    print('Odometry: ', datetime.fromtimestamp(odo_times[0] // 1000000000), '/', datetime.fromtimestamp(odo_times[-1] // 1000000000))
+    print('GPS: ', datetime.fromtimestamp(gps_times[0] // 1000000000), '/', datetime.fromtimestamp(gps_times[-1] // 1000000000))
+    print('IMU: ', datetime.fromtimestamp(imu_times[0] // 1000000000), '/', datetime.fromtimestamp(imu_times[-1] // 1000000000))
     print(30 * '*')
 
     print(30 * '*')

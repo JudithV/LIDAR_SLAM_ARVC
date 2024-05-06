@@ -55,9 +55,9 @@ def view_IMU_data(directory):
 
 
 if __name__ == "__main__":
-    directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O4-2024-03-20-13-14-41'
+    directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O5-2024-04-24-12-47-35'
     # uncomment as necessary
     view_IMU_data(directory=directory)
-    # view_odo_data(directory=directory)
+    view_odo_data(directory=directory)
     view_odo_orientation_data(directory=directory)
     view_gps_data(directory=directory)

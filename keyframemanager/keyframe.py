@@ -214,7 +214,7 @@ class KeyFrame():
             initial_transform = np.eye(4)
 
         print("Initial transformation. Viewing initial:")
-        other.draw_registration_result(self, initial_transform)
+        # other.draw_registration_result(self, initial_transform)
 
         print("Apply point-to-plane ICP. Local registration")
         threshold = ICP_PARAMETERS.distance_threshold
@@ -232,7 +232,7 @@ class KeyFrame():
         print('Registration result: ', reg_p2p)
         print("Transformation is:")
         print(reg_p2p.transformation)
-        other.draw_registration_result(self, reg_p2p.transformation)
+        # other.draw_registration_result(self, reg_p2p.transformation)
         T = HomogeneousMatrix(reg_p2p.transformation)
         return T
 
@@ -267,7 +267,7 @@ class KeyFrame():
         beta = t1[4]
         gamma = t2[5]
         T = HomogeneousMatrix(np.array([tx, ty, tz]), Euler([alpha, beta, gamma]))
-        other.draw_registration_result(self, T.array)
+        # other.draw_registration_result(self, T.array)
         print('Registration results: ', reg_p2pb)
         return T
 

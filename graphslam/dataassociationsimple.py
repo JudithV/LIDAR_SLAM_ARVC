@@ -22,6 +22,86 @@ class DataAssociationSimple():
         self.radius_threshold = radius_threshold
         self.positions = None
 
+    def loop_closing(self, current_index, number_of_candidates_DA, keyframe_manager):
+        # Data association. Now, add, each cada 15, 20, observaciones (i.e.) 5 metros, ejecutar una asociación de datos
+        # Determine if there is loop closure based on the odometry measurement and the previous estimate of the state.
+        candidates = self.find_candidates()
+        rel_transforms = []
+        if len(candidates) > 0:
+            print(candidates)
+            candidates, rel_transforms = self.compute_transformations_between_candidates(current_index=current_index,
+                                                                                         candidates=candidates,
+                                                                                         number_of_candidates=number_of_candidates_DA,
+                                                                                         keyframe_manager=keyframe_manager)
+            self.add_loop_closing_restrictions(current_index=current_index, candidates=candidates, rel_transforms=rel_transforms)
+        return candidates, rel_transforms
+            # self.triangle_filter_transformations_between_candidates(current_index=current_index,
+            #                                                         candidates=candidates,
+            #                                                         transformations=rel_transforms)
+            # graphslam.plot(plot3D=True, plot_uncertainty_ellipse=True, skip=15)
+
+    def add_loop_closing_restrictions(self, current_index, candidates, rel_transforms):
+        """
+        Adds loop closing restrictions from LiDAR scanmatching
+        """
+        for k in range(len(candidates)):
+            print('Adding loop_closing edge: ', k)
+            atb_loop = rel_transforms[k]
+            j = candidates[k]
+            atb_loop = self.graphslam.T0_gps.inv()*atb_loop*self.graphslam.T0_gps
+            # j = check_transformations_between_candidates (in triangles)
+            # Add a binary factor in between two existing states if loop closure is detected.
+            self.graphslam.add_edge(atb_loop, current_index, j, 'SM')
+
+            # self.graphslam.optimize()
+            # graphslam.plot(plot3D=True, plot_uncertainty_ellipse=True, skip=15)
+            # self.graphslam.plot_simple(skip=1, plot3D=False)
+
+    def compute_transformations_between_candidates(self, current_index, candidates, number_of_candidates,
+                                                   keyframe_manager):
+        """
+        Try to compute an observation between the scans at steps i and j in the map.
+        The computation is performed considering an initial estimation Tij.
+        """
+        T0_gps = self.graphslam.T0_gps
+        # method = 'icppointpoint'
+        # method = 'icppointplane'
+        # method = 'fpfh'
+        # method = 'icp2planes'
+        i = current_index
+        n = np.min([len(candidates), number_of_candidates])
+        # generating random samples without replacement
+        # sample the candidates up to the max length n randomly
+        candidates = np.random.choice(candidates, size=n, replace=False)
+        # candidates = candidates[idx]
+        relative_transforms_scanmatcher = []
+        # CAUTION: do not add the keyframe to the list: it should have been added before
+        # keyframe_manager.add_keyframe(i)
+        keyframe_manager.load_pointcloud(i)
+        keyframe_manager.pre_process(i)
+        for j in candidates:
+            # compute initial error-prone estimation
+            Ti = HomogeneousMatrix(self.graphslam.current_estimate.atPose3(i).matrix())
+            Tj = HomogeneousMatrix(self.graphslam.current_estimate.atPose3(j).matrix())
+            # Correct each estimation by the gps transformation
+            # caution, we are estimating the GPS position the robot
+            Ti = Ti*T0_gps.inv()
+            Tj = Tj * T0_gps.inv()
+            # compute the relative transformation between lidars
+            # this is the initial estimation between the pointclouds
+            Tij = Ti.inv() * Tj
+            # compute observation using ICP (change the method)
+            keyframe_manager.load_pointcloud(j)
+            keyframe_manager.pre_process(j)
+            # Caution: the transformation Tijsm is computed from Lidar to Lidar
+            Tijsm = keyframe_manager.compute_transformation(i, j, Tij=Tij)
+            # compute the transformation considering the T0_gps transform
+            Tijsm = T0_gps.inv()*Tijsm*T0_gps
+            relative_transforms_scanmatcher.append(Tijsm)
+        return candidates, relative_transforms_scanmatcher
+
+    # def triangle_filter_transformations_between_candidates
+
     def store_positions(self):
         poses = []
         i = 0
@@ -84,8 +164,8 @@ class DataAssociationSimple():
         # compute distance to all positions up to index
         positions = self.positions[0:index, :]
         d = np.linalg.norm(positions - current_pose, axis=1)
-        print('distances:')
-        print(d)
+        # print('distances:')
+        # print(d)
         candidates = np.where(d < self.radius_threshold)[0]
         return candidates
         # for i in range(len(self.positions)-index):
