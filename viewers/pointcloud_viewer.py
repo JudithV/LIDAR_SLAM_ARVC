@@ -42,7 +42,7 @@ def view_point_clouds(directory, keyframe_sampling):
     keyframe_manager = KeyFrameManager(directory=directory, scan_times=scan_times, voxel_size=voxel_size)
     # OPTIONAL: visualize resulting map
     keyframe_manager.add_keyframes(keyframe_sampling=keyframe_sampling)
-    keyframe_manager.load_pointclouds()
+    # keyframe_manager.load_pointclouds()
     # caution: only visualization. All points are kept by the visualization window
     # caution: the global transforms correspond to the scan_times
     keyframe_manager.visualize_map_online(global_transforms=identity_transforms, radii=[0.5, 30.0], clear=True)
@@ -52,5 +52,16 @@ def view_point_clouds(directory, keyframe_sampling):
 #
 
 if __name__ == "__main__":
-    directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O1-2024-03-06-17-30-39'
+    # OUTDOOR
+    # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O1-2024-03-06-17-30-39'
+    # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O2-2024-03-07-13-33-34'
+    # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O3-2024-03-18-17-11-17'
+    # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O4-2024-03-20-13-14-41'
+    # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O5-2024-04-24-12-47-35'
+    # INDOOR
+    # directory = '/media/arvc/INTENSO/DATASETS/INDOOR/I1-2024-03-06-13-44-09'
+    # directory = '/media/arvc/INTENSO/DATASETS/INDOOR/I2-2024-03-06-13-50-58'
+    # directory = '/media/arvc/INTENSO/DATASETS/INDOOR/I3-2024-04-22-15-21-28'
+    # mixed INDOOR/OUTDOOR
+    directory = '/media/arvc/INTENSO/DATASETS/INDOOR&OUTDOOR/IO1-2024-05-03-09-51-52'
     view_point_clouds(directory=directory, keyframe_sampling=5)

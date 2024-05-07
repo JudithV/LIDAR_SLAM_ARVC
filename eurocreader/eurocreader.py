@@ -49,6 +49,18 @@ class EurocReader():
         T.print_nice()
         return T
 
+    def read_utm_ref(self, gpsname):
+        print('Reading base latitude/longitude/altitude: ')
+        reference_yaml_filename = self.directory + '/robot0/' + gpsname + '/reference.yaml'
+        print('Transformation file is: ', reference_yaml_filename)
+        with open(reference_yaml_filename) as file:
+            config = yaml.load(file, Loader=yaml.FullLoader)
+        lat = config['latitude']
+        lon = config['longitude']
+        altitude = config['altitude']
+        print('Found reference (lag/lon/altitude): ', lat, lon, altitude)
+        return config
+
     def read_csv(self, filename):
         full_filename = self.directory + filename
         df = pd.read_csv(full_filename)

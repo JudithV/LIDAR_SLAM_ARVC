@@ -23,6 +23,7 @@ class KeyFrameManager():
             self.add_keyframe(i)
 
     def add_keyframe(self, index):
+        print('Adding keyframe with scan_time: ', self.scan_times[index])
         kf = KeyFrame(directory=self.directory, scan_time=self.scan_times[index],
                       voxel_size=self.voxel_size)
         self.keyframes.append(kf)
@@ -117,6 +118,7 @@ class KeyFrameManager():
                 vis.clear_geometries()
             print("Keyframe: ", i, "out of: ", len(self.keyframes), end='\r')
             kf = self.keyframes[i]
+            kf.load_pointcloud()
             kf.filter_radius_height(radii=radii, heights=heights)
             # kf.filter_radius(radii=radii)
             # kf.filter_height(heights=heights)

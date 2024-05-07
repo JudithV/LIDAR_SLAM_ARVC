@@ -45,6 +45,7 @@ class KeyFrame():
 
     def load_pointcloud(self):
         filename = self.directory + '/robot0/lidar/data/' + str(self.scan_time) + '.pcd'
+        print('Reading pointcloud: ', filename)
         # Load the original complete pointcloud
         self.pointcloud = o3d.io.read_point_cloud(filename)
 
@@ -230,8 +231,8 @@ class KeyFrame():
         else:
             print('UNKNOWN OPTION. Should be pointpoint or pointplane')
         print('Registration result: ', reg_p2p)
-        print("Transformation is:")
-        print(reg_p2p.transformation)
+        # print("Transformation is:")
+        # print(reg_p2p.transformation)
         # other.draw_registration_result(self, reg_p2p.transformation)
         T = HomogeneousMatrix(reg_p2p.transformation)
         return T

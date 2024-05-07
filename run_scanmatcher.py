@@ -1,7 +1,6 @@
 """
 Run a scanmatcher using O3D for consecutive scans.
 """
-from artelib.euler import Euler
 from eurocreader.eurocreader import EurocReader
 from keyframemanager.keyframemanager import KeyFrameManager
 from artelib.homogeneousmatrix import HomogeneousMatrix, compute_global_transformations, \
@@ -11,15 +10,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tools.gpsconversions import gps2utm
 from tools.sampling import sample_odometry, sample_times
-# from config import ICP_PARAMETERS
 from artelib.homogeneousmatrix import compute_homogeneous_transforms
 import getopt
 import sys
-from artelib.vector import Vector
 from artelib.euler import Euler
 
 
-def find_options(argv):
+def find_options():
+    argv = sys.argv[1:]
     euroc_path = None
     try:
         opts, args = getopt.getopt(argv, "hi:", ["ifile="])
@@ -32,7 +30,7 @@ def find_options(argv):
             sys.exit()
         elif opt in ("-i", "--ifile"):
             euroc_path = arg
-    print('Input EUROC directory is: ', euroc_path)
+    print('Input find_options directory is: ', euroc_path)
     return euroc_path
 
 
@@ -120,7 +118,7 @@ def prepare_experiment_data(euroc_read, start_index=20, delta_time=1.0):
     return scan_times, odo_times, gps_times, df_odo, df_gps
 
 
-def scanmatcher():
+def scanmatcher(directory=None):
     """
     The script samples LiDAR data from a starting index. A scanmatching procedure using ICP is carried out.
     The basic parameters to obtain an estimation of the robot movement are:
@@ -134,7 +132,19 @@ def scanmatcher():
     ################################################################################################
     # CONFIGURATION
     ################################################################################################
-    directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O2-2024-03-07-13-33-34'
+    if directory is None:
+        # OUTDOOR
+        # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O1-2024-03-06-17-30-39'
+        # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O2-2024-03-07-13-33-34'
+        # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O3-2024-03-18-17-11-17'
+        # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O4-2024-03-20-13-14-41'
+        # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O5-2024-04-24-12-47-35'
+        # INDOOR
+        # directory = '/media/arvc/INTENSO/DATASETS/INDOOR/I1-2024-03-06-13-44-09'
+        # directory = '/media/arvc/INTENSO/DATASETS/INDOOR/I2-2024-03-06-13-50-58'
+        # directory = '/media/arvc/INTENSO/DATASETS/INDOOR/I3-2024-04-22-15-21-28'
+        # mixed INDOOR/OUTDOOR
+        directory = '/media/arvc/INTENSO/DATASETS/INDOOR_OUTDOOR/IO1-2024-05-03-09-51-52'
     # caution, this is needed to remove initial LiDAR scans with no other data associated to it
     start_index = 0
     # sample LiDAR scans with delta_time in seconds (of course, depends on available data)
@@ -192,7 +202,7 @@ def scanmatcher():
     # compute the global transformations using scanmatching
     # The position of the robot
     global_transforms_scanmatcher = compute_global_transformations(relative_transforms_scanmatcher, T0=T0, Trobot_gps=None)
-    # The position of the robot
+    # The position of the gps
     # global_transforms_scanmatcher_gps = compute_global_transformations(relative_transforms_scanmatcher, T0=T0, Trobot_gps=T0_gps)
 
     # save to a directory so that maps can be later built
@@ -211,4 +221,5 @@ def scanmatcher():
 
 
 if __name__ == "__main__":
-    scanmatcher()
+    directory = find_options()
+    scanmatcher(directory=directory)

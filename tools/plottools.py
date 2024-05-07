@@ -198,14 +198,15 @@ def plot_gps_points(df_gps, title='GPS POINTS (index, radius error in meters)',
     plt.xlabel('longitude')
     plt.ylabel('latitude')
     if annotate_index:
-        for i in range(0, len(df_gps['longitude']), 10):
+        for i in range(0, len(df_gps), 10):
             txt = str(i)
-            plt.annotate(txt, (df_gps['longitude'][i], df_gps['latitude'][i]), fontsize=12)
+            # print(i, df_gps['longitude'].iloc[i], df_gps['latitude'].iloc[i])
+            plt.annotate(txt, (df_gps['longitude'].iloc[i], df_gps['latitude'].iloc[i]), fontsize=12)
     if annotate_error:
         for i in range(0, len(df_gps['longitude']), 10):
-            s_x = 2 * np.sqrt(df_gps['covariance_d1'][i])
+            s_x = 2 * np.sqrt(df_gps['covariance_d1'].iloc[i])
             txt = "{:.3f}".format(s_x)
-            plt.annotate(txt, (df_gps['longitude'][i], df_gps['latitude'][i]), fontsize=12)
+            plt.annotate(txt, (df_gps['longitude'].iloc[i], df_gps['latitude'].iloc[i]), fontsize=12)
     plt.show(block=True)
 
 def plot_utm_points(df_gps, title='UTM POINTS (index, radius error in meters)',
@@ -226,12 +227,12 @@ def plot_utm_points(df_gps, title='UTM POINTS (index, radius error in meters)',
     if annotate_index:
         for i in range(0, len(df_gps['x']), 10):
             txt = str(i)
-            plt.annotate(txt, (df_gps['x'][i], df_gps['y'][i]), fontsize=12)
+            plt.annotate(txt, (df_gps['x'].iloc[i], df_gps['y'].iloc[i]), fontsize=12)
     if annotate_error:
         for i in range(0, len(df_gps['x']), 10):
-            s_x = 2 * np.sqrt(df_gps['covariance_d1'][i])
+            s_x = 2 * np.sqrt(df_gps['covariance_d1'].iloc[i])
             txt = "{:.3f}".format(s_x)
-            plt.annotate(txt, (df_gps['x'][i], df_gps['y'][i]), fontsize=12)
+            plt.annotate(txt, (df_gps['x'].iloc[i], df_gps['y'].iloc[i]), fontsize=12)
     plt.show(block=True)
 
 

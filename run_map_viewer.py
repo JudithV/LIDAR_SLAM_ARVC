@@ -34,7 +34,7 @@ def visualize_map_online(global_transforms, keyframe_manager, keyframe_sampling=
     print("COMPUTING MAP FROM KEYFRAMES")
     # First: add all keyframes with the known sampling
     keyframe_manager.add_keyframes(keyframe_sampling=keyframe_sampling)
-    keyframe_manager.load_pointclouds()
+    # keyframe_manager.load_pointclouds()
     keyframe_manager.visualize_map_online(global_transforms=sampled_global_transforms, radii=radii, heights=heights)
 
 
@@ -54,7 +54,17 @@ def main():
     # Read the final transform (i.e. via GraphSLAM)
     # You may be using different estimations to build the map: i.e. scanmatching or the results from graphSLAM
     # select as desired
-    directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O1-2024-03-06-17-30-39'
+    # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O1-2024-03-06-17-30-39'
+    # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O1-2024-03-06-17-30-39'
+    # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O2-2024-03-07-13-33-34'
+    # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O3-2024-03-18-17-11-17'
+    # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O4-2024-03-20-13-14-41'
+    # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O5-2024-04-24-12-47-35'
+
+    # directory = '/media/arvc/INTENSO/DATASETS/INDOOR/I1-2024-03-06-13-44-09'
+    directory = '/media/arvc/INTENSO/DATASETS/INDOOR/I2-2024-03-06-13-50-58'
+    # directory = '/media/arvc/INTENSO/DATASETS/INDOOR/I3-2024-04-22-15-21-28'
+
     # filename = '/robot0/scanmatcher/scanmatcher_global.csv'
     filename = '/robot0/SLAM/solution_graphslam.csv'
     # use, for example, 1 out of 5 LiDARS to build the map
@@ -66,7 +76,7 @@ def main():
     # basic scan filtering to build the map (Radius_min, Radius_max, Height_min, Height_max)
     # CAUTION: add mor
     radii = [0, 35.0]
-    heights = [-100, 3]
+    heights = [-100, 1.5]
 
 
     # read data

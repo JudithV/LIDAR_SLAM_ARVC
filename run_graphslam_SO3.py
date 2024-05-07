@@ -80,10 +80,10 @@ def view_result_map(global_transforms, directory, scan_times, keyframe_sampling)
     keyframe_manager = KeyFrameManager(directory=directory, scan_times=scan_times, voxel_size=voxel_size)
     # OPTIONAL: visualize resulting map
     keyframe_manager.add_keyframes(keyframe_sampling=keyframe_sampling)
-    keyframe_manager.load_pointclouds()
+    # keyframe_manager.load_pointclouds()
     # caution: only visualization. All points are kept by the visualization window
     # caution: the global transforms correspond to the scan_times
-    keyframe_manager.visualize_map_online(global_transforms=sampled_global_transforms, radii=[0.5, 30.0])
+    keyframe_manager.visualize_map_online(global_transforms=sampled_global_transforms, radii=[0.5, 35.0])
     # the build map method actually returns a global O3D pointcloud
     pointcloud_global = keyframe_manager.build_map(global_transforms=global_transforms,
                                                    keyframe_sampling=keyframe_sampling, radii=[0.5, 10.0])
@@ -95,11 +95,13 @@ def run_graphSLAM():
     # Recetario:
     ######################################################################################
     # PARA EXTERIORES:
-    directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O1-2024-03-06-17-30-39'
+    # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O1-2024-03-06-17-30-39'
     # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O2-2024-03-07-13-33-34'
-    # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O3-2024-03-18-17-11-17'
+    directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O3-2024-03-18-17-11-17'
     # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O4-2024-03-20-13-14-41'
     # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O5-2024-04-24-12-47-35'
+    # MIXTO
+    directory = '/media/arvc/INTENSO/DATASETS/INDOOR_OUTDOOR/IO1-2024-05-03-09-51-52'
     # probado en O5
     # el ICP se debe configurar con una altura z máxima y distancia
     # only perform DA and optimization each skip_DA_optimization poses
@@ -112,7 +114,7 @@ def run_graphSLAM():
     # try to find a loop closure, distance_backwards accumulated distance from the last pose
     distance_backwards = 15.0
     # no uncertainty is considered. Trying to close a loop with all candidates poses within this radius (includes the error)
-    radius_threshold = 5.0
+    radius_threshold = 2.0
     # visualization: choose, for example, 1 out of 10 poses and its matching scan
     visualization_keyframe_sampling = 20
     ####################################################################################
@@ -124,12 +126,12 @@ def run_graphSLAM():
     # method = 'icppointplane'
     # skip_loop_closing = 20
     # skip_optimization = 50
-    # try to add at most, number_of_candidates_DA
+    ## try to add at most, number_of_candidates_DA
     # number_of_candidates_DA = 5
-    # try to find a loop closure, distance_backwards accumulated distance from the last pose
+    ## try to find a loop closure, distance_backwards accumulated distance from the last pose
     # distance_backwards = 7.0
-    # no uncertainty is considered. Trying to close a loop with all candidates poses within this radius (includes the error)
-    # radius_threshold = 3.0
+    ## no uncertainty is considered. Trying to close a loop with all candidates poses within this radius (includes the error)
+    # radius_threshold = 1.0
     # visualization: choose, for example, 1 out of 10 poses and its matching scan
     # visualization_keyframe_sampling = 20
     ##################################################################
@@ -145,15 +147,18 @@ def run_graphSLAM():
     # we need to consider GPS readings
     # caution: the GPS is only considered if the timestamp with scan_times (LiDAR) is below 0.05 seconds
     scan_times, df_scanmatcher_global, df_odo_global, df_gps, gps_times, T0_gps = prepare_experiment_data(euroc_read=euroc_read)
+    if T0_gps is None:
+        T0_gps = HomogeneousMatrix()
+    # T0_gps = HomogeneousMatrix(Vector([0.36, 0, 0]), Euler([0, 0, 0]))
     # Read global transformations from scanmatcher and change the reference system to the GPS (if the GPS is available)
     scanmatcher_global = compute_homogeneous_transforms(df_scanmatcher_global)
-    scanmatcher_global_gps = multiply_by_transform(scanmatcher_global, Trel=T0_gps)
-    scanmatcher_relative_gps = compute_relative_transformations(global_transforms=scanmatcher_global_gps)
-
+    # modify transform if GPS readings are to be included
+    scanmatcher_global = multiply_by_transform(scanmatcher_global, Trel=T0_gps)
+    scanmatcher_relative = compute_relative_transformations(global_transforms=scanmatcher_global)
     # read odometry and compute relative transforms
     odo_transforms = compute_homogeneous_transforms(df_odo_global)
-    odo_transforms_gps = multiply_by_transform(odo_transforms, Trel=T0_gps)
-    relative_transforms_odo = compute_relative_transformations(global_transforms=odo_transforms_gps)
+    odo_transforms = multiply_by_transform(odo_transforms, Trel=T0_gps)
+    relative_transforms_odo = compute_relative_transformations(global_transforms=odo_transforms)
 
     # create the graphslam graph
     graphslam = GraphSLAMSO3(T0=T0, T0_gps=T0_gps)
@@ -166,7 +171,7 @@ def run_graphSLAM():
     keyframe_manager.add_keyframes(keyframe_sampling=1)
     corr_indexes = []
     # start adding scanmatcher info as edges,
-    for i in range(len(scanmatcher_relative_gps)):
+    for i in range(len(scanmatcher_relative)):
         print('GraphSLAM trajectory step: ', i)
         current_time = scan_times[i]
         # add extra GPS factors at i, given current time if gps is found at that time (or close to it)
@@ -178,7 +183,7 @@ def run_graphSLAM():
             corr_indexes.append([i, gps_index])
 
         # add binary factors using scanmatcher and odometry
-        atb_sm = scanmatcher_relative_gps[i]
+        atb_sm = scanmatcher_relative[i]
         atb_odo = relative_transforms_odo[i]
 
         # create the initial estimate of node i+1 using SM
@@ -196,7 +201,7 @@ def run_graphSLAM():
 
         # perform Loop Closing
         # if perform_loop_closing and ((i % skip_loop_closing) == 0 or len(sm_transforms)-i < 2):
-        if perform_loop_closing and (i % skip_loop_closing) == 0 or (len(scanmatcher_relative_gps)-i) < 5:
+        if perform_loop_closing and (i % skip_loop_closing) == 0 or (len(scanmatcher_relative)-i) < 5:
             graphslam.plot_simple(skip=1, plot3D=False)
             candidates, rel_transforms = dassoc.loop_closing(current_index=i,
                                                              number_of_candidates_DA=number_of_candidates_DA,

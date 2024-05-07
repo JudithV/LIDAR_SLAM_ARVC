@@ -22,8 +22,11 @@ icp_xyz_sigma = 0.05
 # Declare the 3D rotational standard deviations of the odometry factor's Gaussian model, in degrees.
 icp_rpy_sigma = 0.05
 # GPS noise: in UTM, x, y, height
-gps_xy_sigma = 0.5
-gps_altitude_sigma = 2.0
+gps_xy_sigma = 2.5
+gps_altitude_sigma = 3.0
+
+# gps_xy_sigma = 0.5
+# gps_altitude_sigma = 2.0
 
 # Declare the noise models
 PRIOR_NOISE = gtsam.noiseModel.Diagonal.Sigmas(np.array([prior_rpy_sigma*np.pi/180,
@@ -203,6 +206,7 @@ class GraphSLAMSO3():
             plt.plot(x, y, color='black', linewidth=5)
             # plt.show()
         plt.pause(0.01)
+        plt.show()
 
     def get_solution(self):
         return self.current_estimate

@@ -19,7 +19,19 @@ def plot_delta_times(sensor_times, units=1e9, title='TITLE'):
 
 
 def main():
-    directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O5-2024-04-24-12-47-35'
+    # OUTDOOR
+    directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O1-2024-03-06-17-30-39'
+    # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O2-2024-03-07-13-33-34'
+    # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O3-2024-03-18-17-11-17'
+    # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O4-2024-03-20-13-14-41'
+    # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O5-2024-04-24-12-47-35'
+    # INDOOR
+    # directory = '/media/arvc/INTENSO/DATASETS/INDOOR/I1-2024-03-06-13-44-09'
+    # directory = '/media/arvc/INTENSO/DATASETS/INDOOR/I2-2024-03-06-13-50-58'
+    # directory = '/media/arvc/INTENSO/DATASETS/INDOOR/I3-2024-04-22-15-21-28'
+    # mixed INDOOR/OUTDOOR
+    # directory = '/media/arvc/INTENSO/DATASETS/INDOOR_OUTDOOR/IO1-2024-05-03-09-51-52'
+
     euroc_read = EurocReader(directory=directory)
 
     # read LiDAR times
@@ -83,6 +95,14 @@ def main():
     print('Odometry: ', (odo_times[-1]-odo_times[0])/1e9)
     print('GPS: ', (gps_times[-1]-gps_times[0])/1e9)
     print('IMU: ', (imu_times[-1]-imu_times[0])/1e9)
+    print(30 * '*')
+
+    print(30 * '*')
+    print('Sensor frequencies Hz: ')
+    print('LiDAR: ', len(lidar_times)/(lidar_times[-1]-lidar_times[0])*1e9)
+    print('Odometry: ', len(odo_times)/(odo_times[-1]-odo_times[0])*1e9)
+    print('GPS: ', len(gps_times)/(gps_times[-1]-gps_times[0])*1e9)
+    print('IMU: ', len(imu_times)/(imu_times[-1]-imu_times[0])*1e9)
     print(30 * '*')
 
 
