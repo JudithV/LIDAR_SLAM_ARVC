@@ -26,6 +26,8 @@ class KeyFrame():
         self.pointcloud_filtered = None
         self.pointcloud_ground_plane = None
         self.pointcloud_non_ground_plane = None
+        # used for global FPFH registration
+        self.pointcloud_fpfh = None
 
         self.voxel_size_normals_ground_plane = 0.5
         self.voxel_size_normals = 0.3
@@ -36,18 +38,24 @@ class KeyFrame():
         self.plane_model = None
         self.pre_processed = False
 
-        # extraer los Fast Point Feature Histograms
-        # self.pointcloud_fpfh = o3d.pipelines.registration.compute_fpfh_feature(self.pointcloud,
-        #                                                                        o3d.geometry.KDTreeSearchParamHybrid(
-        #                                                                            radius=self.voxel_size_fpfh,
-        #                                                                            max_nn=100))
-        # self.draw_cloud()
-
     def load_pointcloud(self):
         filename = self.directory + '/robot0/lidar/data/' + str(self.scan_time) + '.pcd'
         print('Reading pointcloud: ', filename)
         # Load the original complete pointcloud
         self.pointcloud = o3d.io.read_point_cloud(filename)
+
+    def unload_pointcloud(self):
+        print('Removing pointclouds from memory (filtered, planes, fpfh): ')
+        del self.pointcloud
+        del self.pointcloud_filtered
+        del self.pointcloud_fpfh
+        del self.pointcloud_ground_plane
+        del self.pointcloud_non_ground_plane
+        self.pointcloud = None
+        self.pointcloud_filtered = None
+        self.pointcloud_ground_plane = None
+        self.pointcloud_non_ground_plane = None
+        self.pointcloud_fpfh = None
 
     def filter_radius_height(self, radii=None, heights=None):
         if radii is None:

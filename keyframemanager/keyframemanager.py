@@ -36,6 +36,9 @@ class KeyFrameManager():
     def load_pointcloud(self, i):
         self.keyframes[i].load_pointcloud()
 
+    def unload_pointcloud(self, i):
+        self.keyframes[i].unload_pointcloud()
+
     def pre_process(self, index):
         self.keyframes[index].pre_process(method=self.method)
 

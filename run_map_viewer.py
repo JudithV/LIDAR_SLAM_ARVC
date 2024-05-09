@@ -38,7 +38,6 @@ def visualize_map_online(global_transforms, keyframe_manager, keyframe_sampling=
     keyframe_manager.visualize_map_online(global_transforms=sampled_global_transforms, radii=radii, heights=heights)
 
 
-
 def build_map(global_transforms, keyframemanager, keyframe_sampling=10):
     """
     Caution: in this case, the map is built using a pointcloud and adding the points to it. This may require a great
@@ -47,7 +46,6 @@ def build_map(global_transforms, keyframemanager, keyframe_sampling=10):
     print("COMPUTING MAP FROM KEYFRAMES")
     keyframemanager.add_keyframes(keyframe_sampling=keyframe_sampling)
     keyframemanager.build_map(global_transforms=global_transforms, keyframe_sampling=keyframe_sampling)
-
 
 
 def main():
@@ -60,11 +58,12 @@ def main():
     # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O3-2024-03-18-17-11-17'
     # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O4-2024-03-20-13-14-41'
     # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O5-2024-04-24-12-47-35'
-
+    directory = '/media/arvc/INTENSO/DATASETS/INDOOR_OUTDOOR/IO1-2024-05-03-09-51-52'
     # directory = '/media/arvc/INTENSO/DATASETS/INDOOR/I1-2024-03-06-13-44-09'
-    directory = '/media/arvc/INTENSO/DATASETS/INDOOR/I2-2024-03-06-13-50-58'
+    # directory = '/media/arvc/INTENSO/DATASETS/INDOOR/I2-2024-03-06-13-50-58'
     # directory = '/media/arvc/INTENSO/DATASETS/INDOOR/I3-2024-04-22-15-21-28'
 
+    # Select a solution from SLAM or from a scanmatcher, for example
     # filename = '/robot0/scanmatcher/scanmatcher_global.csv'
     filename = '/robot0/SLAM/solution_graphslam.csv'
     # use, for example, 1 out of 5 LiDARS to build the map

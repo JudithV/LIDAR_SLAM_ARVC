@@ -145,10 +145,12 @@ def scanmatcher(directory=None):
         # directory = '/media/arvc/INTENSO/DATASETS/INDOOR/I3-2024-04-22-15-21-28'
         # mixed INDOOR/OUTDOOR
         directory = '/media/arvc/INTENSO/DATASETS/INDOOR_OUTDOOR/IO1-2024-05-03-09-51-52'
+
     # caution, this is needed to remove initial LiDAR scans with no other data associated to it
     start_index = 0
     # sample LiDAR scans with delta_time in seconds (of course, depends on available data)
     delta_time = 0.3
+    # delta_time = 1.1
     # voxel size: pointclouds will be filtered with this voxel size
     voxel_size = None
     # select the simple scanmatcher method. Recommended: icppointplane
@@ -179,7 +181,7 @@ def scanmatcher(directory=None):
     keyframe_manager.pre_process(0)
     start_t = time.time()
     # now run the scanmatcher routine, for each pair of scans
-    for i in range(0, len(scan_times)-1):
+    for i in range(0, len(scan_times) - 1):
         print('Adding keyframe and computing transform: ', i, 'out of ', len(scan_times))
         print('Experiment time is (s): ', (scan_times[i]-scan_times[0])/1e9)
         # add current keyframe
@@ -194,6 +196,9 @@ def scanmatcher(directory=None):
         atbsm.print_nice()
         end_t = time.time()
         print('COMPUTATION TIME: ', (end_t-start_t)/(i+1))
+        # releasing memory to avoid crashdowns or memory kills
+        # use with caution!
+        keyframe_manager.unload_pointcloud(i)
 
     # view results in matplotlib. Caution: both global results are modified by T0 using GPS information
     # CAUTION: made to observe the results in case GPS is available

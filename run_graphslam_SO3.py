@@ -11,7 +11,7 @@ from artelib.homogeneousmatrix import compute_homogeneous_transforms, Homogeneou
     compute_relative_transformations, multiply_by_transform
 from keyframemanager.keyframemanager import KeyFrameManager
 import numpy as np
-from tools.gpsconversions import gps2utm
+from tools.gpsconversions import gps2utm, filter_gps
 import matplotlib.pyplot as plt
 from artelib.vector import Vector
 from artelib.euler import Euler
@@ -41,7 +41,11 @@ def prepare_experiment_data(euroc_read):
         gps_times = df_gps['#timestamp [ns]'].to_numpy()
         # gps_times = euroc_read.get_closest_times(master_sensor_times=scan_times, sensor_times=gps_times)
         # df_gps = euroc_read.get_df_at_times(df_data=df_gps, time_list=gps_times)
-        df_gps = gps2utm(df_gps)
+        latlonref = euroc_read.read_utm_ref(gpsname='gps0')
+        df_gps = gps2utm(df_gps, latlonref)
+        # filter data (NaN and 0)
+        df_gps = filter_gps(df_gps)
+        # read relative transform
         T0gps = euroc_read.read_transform('gps0')
     except FileNotFoundError:
         df_gps = None
@@ -87,6 +91,8 @@ def view_result_map(global_transforms, directory, scan_times, keyframe_sampling)
     # the build map method actually returns a global O3D pointcloud
     pointcloud_global = keyframe_manager.build_map(global_transforms=global_transforms,
                                                    keyframe_sampling=keyframe_sampling, radii=[0.5, 10.0])
+    # pointcloud_global se puede guardar
+
 
 
 def run_graphSLAM():
@@ -97,7 +103,7 @@ def run_graphSLAM():
     # PARA EXTERIORES:
     # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O1-2024-03-06-17-30-39'
     # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O2-2024-03-07-13-33-34'
-    directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O3-2024-03-18-17-11-17'
+    # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O3-2024-03-18-17-11-17'
     # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O4-2024-03-20-13-14-41'
     # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O5-2024-04-24-12-47-35'
     # MIXTO

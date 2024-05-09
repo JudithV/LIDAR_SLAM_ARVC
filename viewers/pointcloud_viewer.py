@@ -63,5 +63,5 @@ if __name__ == "__main__":
     # directory = '/media/arvc/INTENSO/DATASETS/INDOOR/I2-2024-03-06-13-50-58'
     # directory = '/media/arvc/INTENSO/DATASETS/INDOOR/I3-2024-04-22-15-21-28'
     # mixed INDOOR/OUTDOOR
-    directory = '/media/arvc/INTENSO/DATASETS/INDOOR&OUTDOOR/IO1-2024-05-03-09-51-52'
+    directory = '/media/arvc/INTENSO/DATASETS/INDOOR_OUTDOOR/IO1-2024-05-03-09-51-52'
     view_point_clouds(directory=directory, keyframe_sampling=5)
