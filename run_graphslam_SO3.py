@@ -38,13 +38,15 @@ def prepare_experiment_data(euroc_read):
     # read and sample gps data
     try:
         df_gps = euroc_read.read_csv(filename='/robot0/gps0/data.csv')
-        gps_times = df_gps['#timestamp [ns]'].to_numpy()
+        # gps_times = df_gps['#timestamp [ns]'].to_numpy()
         # gps_times = euroc_read.get_closest_times(master_sensor_times=scan_times, sensor_times=gps_times)
         # df_gps = euroc_read.get_df_at_times(df_data=df_gps, time_list=gps_times)
         latlonref = euroc_read.read_utm_ref(gpsname='gps0')
-        df_gps = gps2utm(df_gps, latlonref)
         # filter data (NaN and 0)
         df_gps = filter_gps(df_gps)
+        df_gps = gps2utm(df_gps, latlonref)
+        # get valid times once filtered
+        gps_times = df_gps['#timestamp [ns]'].to_numpy()
         # read relative transform
         T0gps = euroc_read.read_transform('gps0')
     except FileNotFoundError:
@@ -97,20 +99,19 @@ def view_result_map(global_transforms, directory, scan_times, keyframe_sampling)
 
 def run_graphSLAM():
     # Add the dataset directory
-
     # Recetario:
     ######################################################################################
     # PARA EXTERIORES:
-    # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O1-2024-03-06-17-30-39'
+    directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O1-2024-03-06-17-30-39'
     # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O2-2024-03-07-13-33-34'
     # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O3-2024-03-18-17-11-17'
     # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O4-2024-03-20-13-14-41'
     # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O5-2024-04-24-12-47-35'
-    # MIXTO
-    directory = '/media/arvc/INTENSO/DATASETS/INDOOR_OUTDOOR/IO1-2024-05-03-09-51-52'
-    # probado en O5
-    # el ICP se debe configurar con una altura z máxima y distancia
-    # only perform DA and optimization each skip_DA_optimization poses
+    # # MIXTO
+    # directory = '/media/arvc/INTENSO/DATASETS/INDOOR_OUTDOOR/IO1-2024-05-03-09-51-52'
+    # # probado en O5
+    # # el ICP se debe configurar con una altura z máxima y distancia
+    # # only perform DA and optimization each skip_DA_optimization poses
     perform_loop_closing = True
     method = 'icppointplane'
     skip_loop_closing = 100
@@ -120,7 +121,7 @@ def run_graphSLAM():
     # try to find a loop closure, distance_backwards accumulated distance from the last pose
     distance_backwards = 15.0
     # no uncertainty is considered. Trying to close a loop with all candidates poses within this radius (includes the error)
-    radius_threshold = 2.0
+    radius_threshold = 3.0
     # visualization: choose, for example, 1 out of 10 poses and its matching scan
     visualization_keyframe_sampling = 20
     ####################################################################################
@@ -132,12 +133,12 @@ def run_graphSLAM():
     # method = 'icppointplane'
     # skip_loop_closing = 20
     # skip_optimization = 50
-    ## try to add at most, number_of_candidates_DA
-    # number_of_candidates_DA = 5
+    # try to add at most, number_of_candidates_DA
+    # number_of_candidates_DA = 1
     ## try to find a loop closure, distance_backwards accumulated distance from the last pose
     # distance_backwards = 7.0
-    ## no uncertainty is considered. Trying to close a loop with all candidates poses within this radius (includes the error)
-    # radius_threshold = 1.0
+    # no uncertainty is considered. Trying to close a loop with all candidates poses within this radius (includes the error)
+    # radius_threshold = 2.0
     # visualization: choose, for example, 1 out of 10 poses and its matching scan
     # visualization_keyframe_sampling = 20
     ##################################################################
@@ -185,7 +186,7 @@ def run_graphSLAM():
         if gps_index is not None:
             print('Added GPS estimation at pose i: ', i)
             print('***')
-            graphslam.add_GPSfactor(df_gps['x'][gps_index], df_gps['y'][gps_index], df_gps['altitude'][gps_index], i)
+            graphslam.add_GPSfactor(df_gps['x'].iloc[gps_index], df_gps['y'].iloc[gps_index], df_gps['altitude'].iloc[gps_index], i)
             corr_indexes.append([i, gps_index])
 
         # add binary factors using scanmatcher and odometry
@@ -207,7 +208,7 @@ def run_graphSLAM():
 
         # perform Loop Closing
         # if perform_loop_closing and ((i % skip_loop_closing) == 0 or len(sm_transforms)-i < 2):
-        if perform_loop_closing and (i % skip_loop_closing) == 0 or (len(scanmatcher_relative)-i) < 5:
+        if perform_loop_closing and ((i % skip_loop_closing) == 0 or (len(scanmatcher_relative)-i) < 2):
             graphslam.plot_simple(skip=1, plot3D=False)
             candidates, rel_transforms = dassoc.loop_closing(current_index=i,
                                                              number_of_candidates_DA=number_of_candidates_DA,
@@ -223,7 +224,7 @@ def run_graphSLAM():
 
     if gps_times is not None:
         graphslam.plot_compare_GPS(df_gps=df_gps, correspondences=corr_indexes)
-
+    # saving the result as csv
     # given the estimations, the position and orientation of the LiDAR is retrieved to ease the computation of the maps
     global_transforms_gps = graphslam.get_solution_transforms()
     global_transforms_lidar = graphslam.get_solution_transforms_lidar()

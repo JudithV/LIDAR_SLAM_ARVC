@@ -104,6 +104,8 @@ def plot_quaternion_data(df_data, title='Quaternion data to Euler', annotate_tim
         q = [qw, qx, qy, qz]
         Q = Quaternion(q)
         th = Q.Euler()[0]
+        th.abg = th.abg + np.array([0, 0, -2.5])
+        th.abg[2] = np.arctan2(np.sin(th.abg[2]), np.cos(th.abg[2]))
         eul.append(th.abg)
         timestamps.append(df_data['#timestamp [ns]'][i]/1e9)
     eul = np.array(eul)

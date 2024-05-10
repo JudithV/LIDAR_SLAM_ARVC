@@ -201,8 +201,8 @@ class GraphSLAMSO3():
         plt.title('Correspondences (estimation, GPS)')
         # plt.figure()
         for c in correspondences:
-            x = [data[c[0], 0], df_gps['x'][c[1]]]
-            y = [data[c[0], 1], df_gps['y'][c[1]]]
+            x = [data[c[0], 0], df_gps['x'].iloc[c[1]]]
+            y = [data[c[0], 1], df_gps['y'].iloc[c[1]]]
             plt.plot(x, y, color='black', linewidth=5)
             # plt.show()
         plt.pause(0.01)
