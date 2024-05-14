@@ -22,85 +22,166 @@ class DataAssociationSimple():
         self.radius_threshold = radius_threshold
         self.positions = None
 
-    def loop_closing(self, current_index, number_of_candidates_DA, keyframe_manager):
+    def loop_closing_simple(self, current_index, number_of_candidates_DA, keyframe_manager):
+        """
+        A simple loop closing procedure. Given the current pose and index:
+            a) Find a number of past robot poses inside a radius_threshold.
+            b) Chose number_of_candidates randomly.
+            c) Compute observations using ICP for each pair of candidates.
+            d) Add the observations with add_loop_closing_restrictions.
+        Of course, sometimes, the measurement found using ICP may be wrong, thus inducing errors in the map.
+        """
         # Data association. Now, add, each cada 15, 20, observaciones (i.e.) 5 metros, ejecutar una asociación de datos
         # Determine if there is loop closure based on the odometry measurement and the previous estimate of the state.
+        # find a number of candidates within a radius
         candidates = self.find_candidates()
-        rel_transforms = []
-        if len(candidates) > 0:
-            print(candidates)
-            candidates, rel_transforms = self.compute_transformations_between_candidates(current_index=current_index,
-                                                                                         candidates=candidates,
-                                                                                         number_of_candidates=number_of_candidates_DA,
-                                                                                         keyframe_manager=keyframe_manager)
-            self.add_loop_closing_restrictions(current_index=current_index, candidates=candidates, rel_transforms=rel_transforms)
-        return candidates, rel_transforms
-            # self.triangle_filter_transformations_between_candidates(current_index=current_index,
-            #                                                         candidates=candidates,
-            #                                                         transformations=rel_transforms)
-            # graphslam.plot(plot3D=True, plot_uncertainty_ellipse=True, skip=15)
+        print(candidates)
+        i = current_index
+        n = np.min([len(candidates), number_of_candidates_DA])
+        # generating random samples without replacement. sample the candidates up to the max length n randomly
+        candidates = np.random.choice(candidates, size=n, replace=False)
+        # from the randomly sampled candidates (number_of_candidates_DA), obtain relative transformations
+        # and add loop closing transformations
+        for j in candidates:
+            Tij = self.compute_transformations_between_candidates(i=i, j=j, keyframe_manager=keyframe_manager)
+            self.add_loop_closing_observation(i=i, j=j, Tij=Tij)
+        return
 
-    def add_loop_closing_restrictions(self, current_index, candidates, rel_transforms):
+    def loop_closing_triangle(self, current_index, number_of_candidates_DA, keyframe_manager):
+        """
+        A better loop closing procedure. Given the current pose and index i (current_index):
+                a) Find a number of past robot poses inside a radius_threshold.
+                b) Chose a candidate j randomly. Find another candidate k. The distance in the indexes in j and k < d_index
+                c) Compute observations using ICP for Tij and Tik.
+                d) Compute Tij*Tjk*(Tik)^(-1)=I, find the error in position and orientation in I to filter the validity
+                   of Tij and Tik. Tjk should be low in uncertainty, since it depends on consecutive observations.
+                e) Add the observations with add_loop_closing_restrictions.
+        Still, of course, sometimes, the measurement found using ICP may be wrong, in this case, it is less probable that
+         both Tij and Tik have errors that can cancel each other. As a result, this is a nice manner to filter out observations.
+        """
+        # forming triplets (i, j1, j2) so that j1 and j2 are within d >< distance.
+        triplets = self.find_feasible_triplets(current_index=current_index)
+        if len(triplets) == 0:
+            return
+        triplet_indexes = range(len(triplets))
+        # sample candidate indexes
+        n = np.min([len(triplet_indexes), number_of_candidates_DA])
+        # find pairs of close candidates randomly
+        triplet_indexes_sampled = np.random.choice(triplet_indexes, size=n, replace=False)
+        for k in triplet_indexes_sampled:
+            print('Checking loop closing triplet: ', triplets[k])
+            i = triplets[k][0]
+            j1 = triplets[k][1]
+            j2 = triplets[k][2]
+            Tij1 = self.compute_transformations_between_candidates(i=i, j=j1, keyframe_manager=keyframe_manager)
+            Tij2 = self.compute_transformations_between_candidates(i=i, j=j2, keyframe_manager=keyframe_manager)
+            Tj1j2 = self.compute_consecutive_transformations(i=j1, j=j2)
+            # computing a loop closing t
+            I = Tij1*Tj1j2*Tij2.inv()
+            print('Found loop closing triplet I: ', I)
+            if self.check_distances(I):
+                 self.add_loop_closing_observation(i=i, j=j1, Tij=Tij1)
+                 self.add_loop_closing_observation(i=i, j=j2, Tij=Tij2)
+
+
+    def find_feasible_triplets(self, current_index):
+        triplets = []
+        candidates = self.find_candidates()
+        print('Found candidates within radius distance threshold:')
+        print(candidates)
+        if len(candidates) == 0:
+            return triplets
+        i = current_index
+        candidates = np.sort(candidates)
+        for k in range(len(candidates)):
+            # for each j, find
+            j1 = candidates[k]
+            j2 = self.find_closest_within_di(j1, candidates[k:])
+            if j2 is not None:
+                triplets.append([i, j1, j2])
+        return triplets
+
+    def check_distances(self, I):
+        dp = np.linalg.norm(I.pos())
+        da1 = np.linalg.norm(I.euler()[0].abg)
+        da2 = np.linalg.norm(I.euler()[1].abg)
+        da = min([da1, da2])
+        print('Found triangle loop closing distances: ', dp, da)
+        if dp < 0.05 and da < 0.05:
+            print('I is OK')
+            return True
+        print('FOUND INCONSISTENT LOOP CLOSING TRIPLET: DISCARDING!!!!!!!')
+        return False
+
+    def find_closest_within_di(self, j, rest_of_candidates):
+        for i in range(len(rest_of_candidates)):
+            u = rest_of_candidates[i]
+            if 1 < abs(u - j) < 5:
+                return u
+        return None
+
+    def add_loop_closing_observation(self, i, j, Tij):
         """
         Adds loop closing restrictions from LiDAR scanmatching
         """
-        for k in range(len(candidates)):
-            print('Adding loop_closing edge: ', k)
-            atb_loop = rel_transforms[k]
-            j = candidates[k]
-            atb_loop = self.graphslam.T0_gps.inv()*atb_loop*self.graphslam.T0_gps
-            # j = check_transformations_between_candidates (in triangles)
-            # Add a binary factor in between two existing states if loop closure is detected.
-            self.graphslam.add_edge(atb_loop, current_index, j, 'SM')
+        # for k in range(len(candidates)):
+        print('Adding loop_closing edge (i, j): ', i, j)
+        # atb_loop = rel_transforms[k]
+        # j = candidates[k]
+        # atb_loop = self.graphslam.T0_gps.inv()*atb_loop*self.graphslam.T0_gps
+        # j = check_transformations_between_candidates (in triangles)
+        # Add a binary factor in between two existing states if loop closure is detected.
+        self.graphslam.add_edge(Tij, i, j, 'SM')
 
-            # self.graphslam.optimize()
-            # graphslam.plot(plot3D=True, plot_uncertainty_ellipse=True, skip=15)
-            # self.graphslam.plot_simple(skip=1, plot3D=False)
 
-    def compute_transformations_between_candidates(self, current_index, candidates, number_of_candidates,
-                                                   keyframe_manager):
+    def compute_transformations_between_candidates(self, i, j, keyframe_manager):
         """
         Try to compute an observation between the scans at steps i and j in the map.
         The computation is performed considering an initial estimation Tij.
         """
         T0_gps = self.graphslam.T0_gps
-        # method = 'icppointpoint'
-        # method = 'icppointplane'
-        # method = 'fpfh'
-        # method = 'icp2planes'
-        i = current_index
-        n = np.min([len(candidates), number_of_candidates])
-        # generating random samples without replacement
-        # sample the candidates up to the max length n randomly
-        candidates = np.random.choice(candidates, size=n, replace=False)
-        # candidates = candidates[idx]
-        relative_transforms_scanmatcher = []
+        # i = current_index
         # CAUTION: do not add the keyframe to the list: it should have been added before
         # keyframe_manager.add_keyframe(i)
         keyframe_manager.load_pointcloud(i)
         keyframe_manager.pre_process(i)
-        for j in candidates:
-            # compute initial error-prone estimation
-            Ti = HomogeneousMatrix(self.graphslam.current_estimate.atPose3(i).matrix())
-            Tj = HomogeneousMatrix(self.graphslam.current_estimate.atPose3(j).matrix())
-            # Correct each estimation by the gps transformation
-            # caution, we are estimating the GPS position the robot
-            Ti = Ti*T0_gps.inv()
-            Tj = Tj * T0_gps.inv()
-            # compute the relative transformation between lidars
-            # this is the initial estimation between the pointclouds
-            Tij = Ti.inv() * Tj
-            # compute observation using ICP (change the method)
-            keyframe_manager.load_pointcloud(j)
-            keyframe_manager.pre_process(j)
-            # Caution: the transformation Tijsm is computed from Lidar to Lidar
-            Tijsm = keyframe_manager.compute_transformation(i, j, Tij=Tij)
-            # compute the transformation considering the T0_gps transform
-            Tijsm = T0_gps.inv()*Tijsm*T0_gps
-            relative_transforms_scanmatcher.append(Tijsm)
-        return candidates, relative_transforms_scanmatcher
+        # for j in candidates:
+        # compute initial error-prone estimation
+        Ti = HomogeneousMatrix(self.graphslam.current_estimate.atPose3(i).matrix())
+        Tj = HomogeneousMatrix(self.graphslam.current_estimate.atPose3(j).matrix())
+        # Correct each estimation by the gps transformation
+        # caution, we are estimating the GPS position the robot
+        Ti = Ti*T0_gps.inv()
+        Tj = Tj * T0_gps.inv()
+        # compute the relative transformation between lidars
+        # this is the initial estimation between the pointclouds
+        Tij = Ti.inv() * Tj
+        # compute observation using ICP (change the method)
+        keyframe_manager.load_pointcloud(j)
+        keyframe_manager.pre_process(j)
+        # Caution: the transformation Tijsm is computed from Lidar to Lidar reference frames
+        Tijsm = keyframe_manager.compute_transformation(i, j, Tij=Tij)
+        # compute the transformation considering the T0_gps transform
+        Tijsm = T0_gps.inv()*Tijsm*T0_gps
+        # relative_transforms_scanmatcher.append(Tijsm)
+        return Tijsm
 
-    # def triangle_filter_transformations_between_candidates
+
+    def compute_consecutive_transformations(self, i, j):
+        """
+        Try to compute an observation between the scans at steps i and j in the map.
+        The computation is performed considering an initial estimation Tij.
+        """
+        T0_gps = self.graphslam.T0_gps
+        # computing relative transformation from the graphslam current solution
+        Ti = HomogeneousMatrix(self.graphslam.current_estimate.atPose3(i).matrix())
+        Tj = HomogeneousMatrix(self.graphslam.current_estimate.atPose3(j).matrix())
+        # Correct each estimation by the gps transformation
+        # caution, we are estimating the GPS position the robot
+        Ti = Ti*T0_gps.inv()
+        Tj = Tj * T0_gps.inv()
+        Tij = Ti.inv() * Tj
+        return Tij
 
     def store_positions(self):
         poses = []

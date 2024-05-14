@@ -102,11 +102,11 @@ def run_graphSLAM():
     # Recetario:
     ######################################################################################
     # PARA EXTERIORES:
-    directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O1-2024-03-06-17-30-39'
+    # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O1-2024-03-06-17-30-39'
     # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O2-2024-03-07-13-33-34'
     # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O3-2024-03-18-17-11-17'
     # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O4-2024-03-20-13-14-41'
-    # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O5-2024-04-24-12-47-35'
+    directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O5-2024-04-24-12-47-35'
     # # MIXTO
     # directory = '/media/arvc/INTENSO/DATASETS/INDOOR_OUTDOOR/IO1-2024-05-03-09-51-52'
     # # probado en O5
@@ -117,7 +117,7 @@ def run_graphSLAM():
     skip_loop_closing = 100
     skip_optimization = 50
     # try to add at most, number_of_candidates_DA
-    number_of_candidates_DA = 5
+    number_of_candidates_DA = 3
     # try to find a loop closure, distance_backwards accumulated distance from the last pose
     distance_backwards = 15.0
     # no uncertainty is considered. Trying to close a loop with all candidates poses within this radius (includes the error)
@@ -207,13 +207,12 @@ def run_graphSLAM():
             graphslam.plot_simple(skip=1, plot3D=False)
 
         # perform Loop Closing
-        # if perform_loop_closing and ((i % skip_loop_closing) == 0 or len(sm_transforms)-i < 2):
         if perform_loop_closing and ((i % skip_loop_closing) == 0 or (len(scanmatcher_relative)-i) < 2):
             graphslam.plot_simple(skip=1, plot3D=False)
-            candidates, rel_transforms = dassoc.loop_closing(current_index=i,
-                                                             number_of_candidates_DA=number_of_candidates_DA,
-                                                             keyframe_manager=keyframe_manager)
-            # add_loop_closing_restrictions(graphslam)
+            # dassoc.loop_closing_simple(current_index=i, number_of_candidates_DA=number_of_candidates_DA,
+            #                                                   keyframe_manager=keyframe_manager)
+            dassoc.loop_closing_triangle(current_index=i, number_of_candidates_DA=number_of_candidates_DA,
+                                         keyframe_manager=keyframe_manager)
             graphslam.plot_simple(skip=1, plot3D=False)
         # graphslam.plot_simple(skip=10, plot3D=False)
 
