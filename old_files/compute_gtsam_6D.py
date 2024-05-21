@@ -9,9 +9,8 @@ from eurocreader.eurocreader import EurocReader
 from tools.homogeneous_matrix import HomogeneousMatrix
 from tools.quaternion import Quaternion
 from tools.euler import Euler
-from gtsamgraph_old.gtsamgraph import GraphGTSAM3D
+from old_files.gtsamgraph_old.gtsamgraph import GraphGTSAM3D
 from tools.matrix_csv import read_matrix_csv, write_matrix_csv
-from pyproj import Proj
 
 
 def compute_gps_orientation(gps_pos, scan_idx):

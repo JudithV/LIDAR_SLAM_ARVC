@@ -10,7 +10,7 @@ from tools.plottools import plot_xy_data, plot_xyz_data, plot_quaternion_data
 def view_odo_data(directory):
     euroc_read = EurocReader(directory=directory)
     df_odo = euroc_read.read_csv(filename='/robot0/odom/data.csv')
-    plot_xy_data(df_data=df_odo, title='Odometry')
+    plot_xy_data(df_data=df_odo, title='Odometry', annotate_index=True)
 
 
 def view_odo_orientation_data(directory):
@@ -44,7 +44,7 @@ def view_gps_data(directory):
         plot_gps_OSM(df_gps=df_gps, save_fig=True, expand=0.001)
 
     except FileNotFoundError:
-        print('NO GPS FILE DATA FOUND')
+        print('NO GPS CONFIGURATION FILE DATA FOUND')
 
 
 def view_IMU_data(directory):
@@ -64,17 +64,20 @@ def view_IMU_data(directory):
 
 if __name__ == "__main__":
     # directory = '/media/arvc/INTENSO/DATASETS/INDOOR/I1-2024-03-06-13-44-09'
-    directory = '/media/arvc/INTENSO/DATASETS/INDOOR/I2-2024-03-06-13-50-58'
+    # directory = '/media/arvc/INTENSO/DATASETS/INDOOR/I2-2024-03-06-13-50-58'
     # directory = '/media/arvc/INTENSO/DATASETS/INDOOR/I3-2024-04-22-15-21-28'
     # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O1-2024-03-06-17-30-39'
     # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O2-2024-03-07-13-33-34'
     # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O3-2024-03-18-17-11-17'
-    # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O4-2024-03-20-13-14-41'
+    directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O4-2024-04-22-13-27-47'
     # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O5-2024-04-24-12-47-35'
+    # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O6-2024-04-10-11-09-24'
+    # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O7-2024-04-22-13-45-50'
+    # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O8-2024-04-24-13-05-16'
     # directory = '/media/arvc/INTENSO/DATASETS/INDOOR_OUTDOOR/IO1-2024-05-03-09-51-52'
 
     # uncomment as necessary
     view_IMU_data(directory=directory)
-    # view_odo_data(directory=directory)
+    view_odo_data(directory=directory)
     # view_odo_orientation_data(directory=directory)
     view_gps_data(directory=directory)

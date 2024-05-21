@@ -7,6 +7,14 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 
 
+def computed_distance_travelled(df_sol):
+    d = 0
+    for i in range(len(df_sol) - 1):
+        dx = df_sol['x'].iloc[i + 1] - df_sol['x'].iloc[i]
+        dy = df_sol['y'].iloc[i + 1] - df_sol['y'].iloc[i]
+        d += np.sqrt(dx * dx + dy * dy)
+    return d
+
 def plot_delta_times(sensor_times, units=1e9, title='TITLE'):
     delta_times = []
     for i in range(len(sensor_times)-1):
@@ -22,14 +30,16 @@ def main():
     # INDOOR
     # directory = '/media/arvc/INTENSO/DATASETS/INDOOR/I1-2024-03-06-13-44-09'
     # directory = '/media/arvc/INTENSO/DATASETS/INDOOR/I2-2024-03-06-13-50-58'
-    directory = '/media/arvc/INTENSO/DATASETS/INDOOR/I3-2024-04-22-15-21-28'
+    # directory = '/media/arvc/INTENSO/DATASETS/INDOOR/I3-2024-04-22-15-21-28'
     # OUTDOOR
     # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O1-2024-03-06-17-30-39'
     # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O2-2024-03-07-13-33-34'
     # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O3-2024-03-18-17-11-17'
-    # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O4-2024-03-20-13-14-41'
+    directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O4-2024-04-22-13-27-47'
     # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O5-2024-04-24-12-47-35'
-
+    # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O6-2024-04-10-11-09-24'
+    # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O7-2024-04-22-13-45-50'
+    # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O8-2024-04-24-13-05-16'
     # mixed INDOOR/OUTDOOR
     # directory = '/media/arvc/INTENSO/DATASETS/INDOOR_OUTDOOR/IO1-2024-05-03-09-51-52'
 
@@ -42,6 +52,8 @@ def main():
     # read odometry times
     df_odo = euroc_read.read_csv(filename='/robot0/odom/data.csv')
     odo_times = df_odo['#timestamp [ns]']
+    print('ODOMETRY TRAVELLED DISTANCE: ', computed_distance_travelled(df_odo))
+
 
     # read gps times
     try:
@@ -52,8 +64,12 @@ def main():
         gps_times = [0, 0]
 
     # read IMU times
-    df_imu = euroc_read.read_csv(filename='/robot0/imu0/orientation/data.csv')
-    imu_times = df_imu['#timestamp [ns]']
+    try:
+        df_imu = euroc_read.read_csv(filename='/robot0/imu0/orientation/data.csv')
+        imu_times = df_imu['#timestamp [ns]']
+    except FileNotFoundError:
+        print('No IMU data found')
+        imu_times = [0, 0]
 
     # PLOTTING RELATIVE DELTA TIMES
     plot_delta_times(gps_times, title='GPS delta_time (s)')

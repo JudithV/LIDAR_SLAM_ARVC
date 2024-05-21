@@ -142,7 +142,7 @@ def plot_xyz_data(df_data, title='TITLE', annotate_time=False):
     plt.show()
 
 
-def plot_xy_data(df_data, title='TITLE', sample=10, annotate_time=False):
+def plot_xy_data(df_data, title='TITLE', sample=10, annotate_time=False, annotate_index=False):
     plt.figure()
     plt.title(title)
     plt.scatter(df_data['x'], df_data['y'], color='blue')
@@ -151,6 +151,10 @@ def plot_xy_data(df_data, title='TITLE', sample=10, annotate_time=False):
             exp_time = (df_data['#timestamp [ns]'][i]-df_data['#timestamp [ns]'][0])/1e9
             txt = "{:.3f}".format(exp_time)
             plt.annotate(txt, (df_data['x'][i], df_data['y'][i]), fontsize=12)
+    if annotate_index:
+        for i in range(0, len(df_data), 10):
+            txt = str(i)
+            plt.annotate(txt, (df_data['x'].iloc[i], df_data['y'].iloc[i]), fontsize=12)
     plt.show()
 
 def plot_3D_data(df_data):

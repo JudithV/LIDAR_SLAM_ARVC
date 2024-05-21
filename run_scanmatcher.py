@@ -14,7 +14,7 @@ from artelib.homogeneousmatrix import compute_homogeneous_transforms
 import getopt
 import sys
 from artelib.euler import Euler
-
+import yaml
 
 def find_options():
     argv = sys.argv[1:]
@@ -32,6 +32,13 @@ def find_options():
             euroc_path = arg
     print('Input find_options directory is: ', euroc_path)
     return euroc_path
+
+
+def read_scanmatcher_parameters(directory):
+    yaml_file_global = directory + '/' + 'robot0/scanmatcher_parameters.yaml'
+    with open(yaml_file_global) as file:
+        parameters = yaml.load(file, Loader=yaml.FullLoader)
+    return parameters
 
 
 def plot_odometry(df_odo):
@@ -120,7 +127,9 @@ def prepare_experiment_data(euroc_read, start_index=20, delta_time=1.0):
 
 def scanmatcher(directory=None):
     """
-    The script samples LiDAR data from a starting index. A scanmatching procedure using ICP is carried out.
+    The script samples LiDAR data from a starting index.
+    Initially, LiDAR scans are sampled based on the movement of the robot (odometry).
+    A scanmatching procedure using ICP is carried out.
     The basic parameters to obtain an estimation of the robot movement are:
     - delta_time: the time between LiDAR scans. Beware that, in the ARVC dataset, the initial sample time for LiDARS may be
     as high as 1 second. In this case, a sensible delta_time would be 1s, so as to use all LiDAR data.
@@ -133,29 +142,31 @@ def scanmatcher(directory=None):
     # CONFIGURATION
     ################################################################################################
     if directory is None:
-        # OUTDOOR
-        # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O1-2024-03-06-17-30-39'
-        # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O2-2024-03-07-13-33-34'
-        # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O3-2024-03-18-17-11-17'
-        # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O4-2024-03-20-13-14-41'
-        # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O5-2024-04-24-12-47-35'
         # INDOOR
         # directory = '/media/arvc/INTENSO/DATASETS/INDOOR/I1-2024-03-06-13-44-09'
         # directory = '/media/arvc/INTENSO/DATASETS/INDOOR/I2-2024-03-06-13-50-58'
         # directory = '/media/arvc/INTENSO/DATASETS/INDOOR/I3-2024-04-22-15-21-28'
-        # mixed INDOOR/OUTDOOR
-        directory = '/media/arvc/INTENSO/DATASETS/INDOOR_OUTDOOR/IO1-2024-05-03-09-51-52'
+        # OUTDOOR
+        # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O1-2024-03-06-17-30-39'
+        # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O2-2024-03-07-13-33-34'
+        # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O3-2024-03-18-17-11-17'
+        directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O4-2024-03-20-13-26-40'
+        # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O5-2024-04-24-12-47-35'
 
+        # mixed INDOOR/OUTDOOR
+        # directory = '/media/arvc/INTENSO/DATASETS/INDOOR_OUTDOOR/IO1-2024-05-03-09-51-52'
+
+    scanmatcher_parameters = read_scanmatcher_parameters(directory=directory)
     # caution, this is needed to remove initial LiDAR scans with no other data associated to it
-    start_index = 0
+    start_index = scanmatcher_parameters.get('start_index', 0)
     # sample LiDAR scans with delta_time in seconds (of course, depends on available data)
-    delta_time = 0.3
-    # delta_time = 1.1
+    delta_time = scanmatcher_parameters.get('delta_time', 0.5)
     # voxel size: pointclouds will be filtered with this voxel size
-    voxel_size = None
+    voxel_size = scanmatcher_parameters.get('voxel_size', None)
+    method = scanmatcher_parameters.get('method', 'icppointplane')
     # select the simple scanmatcher method. Recommended: icppointplane
+    # other methods:
     # method = 'icppointpoint'
-    method = 'icppointplane'
     # method = 'icp2planes'
     # method = 'fpfh'
     ################################################################################################
@@ -174,7 +185,8 @@ def scanmatcher(directory=None):
                                                                                delta_time=delta_time)
     relative_transforms_odo = compute_relative_odometry_transformations(df_odo=df_odo)
     # Create the KeyFrameManager to store all scans and compute relative transformations
-    keyframe_manager = KeyFrameManager(directory=directory, scan_times=scan_times, voxel_size=voxel_size, method=method)
+    keyframe_manager = KeyFrameManager(directory=directory, scan_times=scan_times,
+                                       voxel_size=voxel_size, method=method)
     relative_transforms_scanmatcher = []
     keyframe_manager.add_keyframe(0)
     keyframe_manager.load_pointcloud(0)

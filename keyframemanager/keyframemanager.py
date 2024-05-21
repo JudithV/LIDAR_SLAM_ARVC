@@ -15,6 +15,7 @@ class KeyFrameManager():
         self.keyframes = []
         self.voxel_size = voxel_size
         self.method = method
+        self.show_registration_result = False
 
     def add_keyframes(self, keyframe_sampling):
         # First: add all keyframes with the known sampling
@@ -63,6 +64,8 @@ class KeyFrameManager():
         else:
             print('Unknown registration method')
             transform = None
+        if self.show_registration_result:
+            self.keyframes[j].draw_registration_result(self.keyframes[i], transformation=transform.array)
         return transform
 
     def draw_keyframe(self, index):

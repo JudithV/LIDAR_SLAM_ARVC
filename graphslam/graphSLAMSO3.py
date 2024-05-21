@@ -14,7 +14,7 @@ prior_xyz_sigma = 10.0000000
 # Declare the 3D rotational standard deviations of the prior factor's Gaussian model, in degrees.
 prior_rpy_sigma = 10.0000000
 # Declare the 3D translational standard deviations of the odometry factor's Gaussian model, in meters.
-odo_xyz_sigma = 0.1
+odo_xyz_sigma = 0.05
 # Declare the 3D rotational standard deviations of the odometry factor's Gaussian model, in degrees.
 odo_rpy_sigma = 3
 # Declare the 3D translational standard deviations of the scanmatcher factor's Gaussian model, in meters.
@@ -120,7 +120,7 @@ class GraphSLAMSO3():
 
         # Plot the newly updated iSAM2 inference.
         if plot3D:
-            fig = plt.figure(0)
+            fig = plt.figure(1)
             axes = fig.gca(projection='3d')
             plt.cla()
         else:
@@ -150,7 +150,7 @@ class GraphSLAMSO3():
         """
         if plot3D:
             # Plot the newly updated iSAM2 inference.
-            fig = plt.figure(0)
+            fig = plt.figure(1)
             axes = fig.gca(projection='3d')
             plt.cla()
 
@@ -184,7 +184,7 @@ class GraphSLAMSO3():
         """
         Print and plot the result simply.
         """
-        plt.figure(5)
+        plt.figure(3)
         i = 0
         data = []
         while self.current_estimate.exists(i):
