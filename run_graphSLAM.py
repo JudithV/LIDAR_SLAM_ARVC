@@ -4,7 +4,7 @@ We are integrating odometry, scanmatching odometry and (if present) GPS.
 
 """
 from graphslam.loopclosing import LoopClosing
-from graphslam.graphSLAMSO3 import GraphSLAMSO3
+from graphslam.graphSLAMS import GraphSLAM
 from eurocreader.eurocreader import EurocReader
 from artelib.homogeneousmatrix import compute_homogeneous_transforms, HomogeneousMatrix, \
     compute_relative_transformations, multiply_by_transform
@@ -215,7 +215,7 @@ def run_graphSLAM(directory):
     relative_transforms_odo = compute_relative_transformations(global_transforms=odo_transforms)
 
     # create the graphslam graph
-    graphslam = GraphSLAMSO3(T0=T0, T0_gps=T0_gps)
+    graphslam = GraphSLAM(T0=T0, T0_gps=T0_gps)
     graphslam.init_graph()
     # create the Data Association object
     dassoc = LoopClosing(graphslam, distance_backwards=distance_backwards, radius_threshold=radius_threshold)

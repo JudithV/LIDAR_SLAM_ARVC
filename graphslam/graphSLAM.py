@@ -53,7 +53,7 @@ ODO_NOISE = gtsam.noiseModel.Diagonal.Sigmas(np.array([odo_rpy_sigma*np.pi/180,
 GPS_NOISE = gtsam.Point3(gps_xy_sigma, gps_xy_sigma, gps_altitude_sigma)
 
 
-class GraphSLAMSO3():
+class GraphSLAM():
     def __init__(self, T0, T0_gps):
         # self.current_index = 0
         self.graph = gtsam.NonlinearFactorGraph()
