@@ -4,7 +4,7 @@ We are integrating odometry, scanmatching odometry and (if present) GPS.
 
 """
 from graphslam.loopclosing import LoopClosing
-from graphslam.graphSLAMS import GraphSLAM
+from graphslam.graphSLAM import GraphSLAM
 from eurocreader.eurocreader import EurocReader
 from artelib.homogeneousmatrix import compute_homogeneous_transforms, HomogeneousMatrix, \
     compute_relative_transformations, multiply_by_transform
@@ -127,10 +127,10 @@ def run_graphSLAM(directory):
         # directory = '/media/arvc/INTENSO/DATASETS/INDOOR/I2-2024-03-06-13-50-58'
         # directory = '/media/arvc/INTENSO/DATASETS/INDOOR/I3-2024-04-22-15-21-28'
         # OUTDOOR
-        # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O1-2024-03-06-17-30-39'
+        directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O1-2024-03-06-17-30-39'
         # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O2-2024-03-07-13-33-34'
         # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O3-2024-03-18-17-11-17'
-        directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O4-2024-04-22-13-27-47'
+        # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O4-2024-04-22-13-27-47'
         # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O5-2024-04-24-12-47-35'
         # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O6-2024-04-10-11-09-24'
         # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O7-2024-04-22-13-45-50'
@@ -171,7 +171,7 @@ def run_graphSLAM(directory):
     # # visualization: choose, for example, 1 out of 10 poses and its matching scan
     # visualization_keyframe_sampling = 20
     # ###################################################################
-    view_results = False
+    view_results = True
     slam_parameters = read_slam_parameters(directory=directory)
     # PARA EXTERIORES:
     # # el ICP se debe configurar con una altura z máxima y distancia

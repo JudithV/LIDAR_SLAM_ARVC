@@ -11,7 +11,7 @@ PYTHON_VIRTUAL_ENV='/home/arvc/Applications/venv/bin/python'
 #$PYTHON_VIRTUAL_ENV run_graphSLAM.py -i $directory
 
 directory='/media/arvc/INTENSO/DATASETS/INDOOR/I3-2024-04-22-15-21-28'
-#$PYTHON_VIRTUAL_ENV run_scanmatcher.py -i $directory
+$PYTHON_VIRTUAL_ENV run_scanmatcher.py -i $directory
 $PYTHON_VIRTUAL_ENV run_graphSLAM.py -i $directory
 
 ## OUTDOOR

@@ -143,14 +143,14 @@ def scanmatcher(directory=None):
     ################################################################################################
     if directory is None:
         # INDOOR
-        # directory = '/media/arvc/INTENSO/DATASETS/INDOOR/I1-2024-03-06-13-44-09'
+        directory = '/media/arvc/INTENSO/DATASETS/INDOOR/I1-2024-03-06-13-44-09'
         # directory = '/media/arvc/INTENSO/DATASETS/INDOOR/I2-2024-03-06-13-50-58'
         # directory = '/media/arvc/INTENSO/DATASETS/INDOOR/I3-2024-04-22-15-21-28'
         # OUTDOOR
         # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O1-2024-03-06-17-30-39'
         # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O2-2024-03-07-13-33-34'
         # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O3-2024-03-18-17-11-17'
-        directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O4-2024-03-20-13-26-40'
+        # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O4-2024-03-20-13-26-40'
         # directory = '/media/arvc/INTENSO/DATASETS/OUTDOOR/O5-2024-04-24-12-47-35'
 
         # mixed INDOOR/OUTDOOR
