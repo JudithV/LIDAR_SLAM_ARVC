@@ -90,7 +90,7 @@ def view_result_map(global_transforms, directory, scan_times, keyframe_sampling,
     # keyframe_manager.load_pointclouds()
     # caution: only visualization. All points are kept by the visualization window
     # caution: the global transforms correspond to the scan_times
-    keyframe_manager.visualize_map_online(global_transforms=sampled_global_transforms, radii=radii, heights=heights)
+    keyframe_manager.visualize_map_online(global_transforms=sampled_global_transforms, radii=radii, heights=heights, clear=True)
     # the build map method actually returns a global O3D pointcloud
     pointcloud_global = keyframe_manager.build_map(global_transforms=global_transforms,
                                                    keyframe_sampling=keyframe_sampling, radii=radii, heights=heights)
