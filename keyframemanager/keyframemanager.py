@@ -40,6 +40,12 @@ class KeyFrameManager():
     def unload_pointcloud(self, i):
         self.keyframes[i].unload_pointcloud()
 
+    def save_pointcloud(self, i):
+        self.keyframes[i].save_pointcloud()
+
+    def save_pointcloud_as_mesh(self, i):
+        self.keyframes[i].save_pointcloud_as_mesh()
+
     def pre_process(self, index):
         self.keyframes[index].pre_process(method=self.method)
 
@@ -72,7 +78,8 @@ class KeyFrameManager():
         self.keyframes[index].draw_cloud()
 
     def visualize_keyframe(self, index):
-        self.keyframes[index].visualize_cloud()
+        # self.keyframes[index].visualize_cloud()
+        self.keyframes[index].draw_cloud()
 
     def draw_all_clouds(self, sample=3, max_dist=15, max_height=1.5):
         vis = o3d.visualization.Visualizer()

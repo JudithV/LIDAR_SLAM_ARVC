@@ -44,6 +44,20 @@ class KeyFrame():
         # Load the original complete pointcloud
         self.pointcloud = o3d.io.read_point_cloud(filename)
 
+    def save_pointcloud(self):
+        filename = self.directory + '/robot0/lidar/dataply/' + str(self.scan_time) + '.ply'
+        print('Saving pointcloud: ', filename)
+        # Load the original complete pointcloud
+        o3d.io.write_point_cloud(filename, self.pointcloud)
+
+    def save_pointcloud_as_mesh(self):
+        # https: // www.open3d.org / docs / release / tutorial / geometry / surface_reconstruction.html
+        filename = self.directory + '/robot0/lidar/dataply/' + str(self.scan_time) + '.ply'
+        print('Saving pointcloud. Converting alpha shape: ', filename)
+        mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_alpha_shape(self.pointcloud, 0.01)
+        # Load the original complete pointcloud
+        o3d.io.write_triangle_mesh(filename, mesh)
+
     def unload_pointcloud(self):
         print('Removing pointclouds from memory (filtered, planes, fpfh): ')
         del self.pointcloud
